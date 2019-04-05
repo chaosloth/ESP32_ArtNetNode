@@ -29,11 +29,7 @@ extern "C" {
 #include "mem.h"
 }
 
-
-
-
 void _artClearDMXBuffer(byte* buf);
-
 
 void _artClearDMXBuffer(byte* buf) {
   memset(buf, 0, DMX_BUFFER_SIZE);
@@ -53,7 +49,7 @@ void esp8266ArtNetRDM::end() {
     return;
 
 #ifdef ESP32
-  // TODO
+  // TODO?!
 #else  // #ifdef ESP32
   eUDP.stopAll();
 #endif  // #ifdef ESP32
@@ -299,7 +295,7 @@ void esp8266ArtNetRDM::pause() {
 
   eUDP.flush();
 #ifdef ESP32
-  // TODO
+  // TODO?!
 #else  // #ifdef ESP32
   eUDP.stopAll();
 #endif  // #ifdef ESP32

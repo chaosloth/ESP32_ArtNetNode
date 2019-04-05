@@ -46,6 +46,11 @@ This competition will open to the general public a couple of weeks after the pri
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 
+extern "C" {
+  #include "user_interface.h"
+  extern struct rst_info resetInfo;
+}
+
 #endif  // #ifdef ESP32
 
 #include <WiFiClient.h>
@@ -57,15 +62,6 @@ This competition will open to the general public a couple of weeks after the pri
 #include "wsFX.h"
 #include "espDMX_RDM.h"
 #include "espArtNetRDM.h"
-
-#ifndef ESP32
-
-extern "C" {
-  #include "user_interface.h"
-  extern struct rst_info resetInfo;
-}
-
-#endif   // #ifdef ESP32
 
 #define FIRMWARE_VERSION "v2.0.0 (beta 5g)"
 #define ART_FIRM_VERSION 0x0200   // Firmware given over Artnet (2 bytes)
@@ -95,8 +91,8 @@ extern "C" {
   #define DMX_TX_B 2
 
   #define STATUS_LED_PIN 12
-//  #define STATUS_LED_MODE_WS2812
-  #define STATUS_LED_MODE_APA106
+  #define STATUS_LED_MODE_WS2812
+//  #define STATUS_LED_MODE_APA106
   #define STATUS_LED_A 0  // Physical wiring order for status LEDs
   #define STATUS_LED_B 1
   #define STATUS_LED_S 2
@@ -237,8 +233,7 @@ void artnet_setup(void) {
 
   // Store our counters for resetting defaults
 #ifdef ESP32
-  if (rtc_get_reset_reason(0) != NO_MEAN && rtc_get_reset_reason(0) != POWERON_RESET && rtc_get_reset_reason(0) != SW_RESET &&
-      rtc_get_reset_reason(1) != NO_MEAN && rtc_get_reset_reason(1) != POWERON_RESET && rtc_get_reset_reason(1) != SW_RESET)
+  if (rtc_get_reset_reason(xPortGetCoreID()) != EXT_CPU_RESET && rtc_get_reset_reason(xPortGetCoreID()) != POWERON_RESET && rtc_get_reset_reason(xPortGetCoreID()) != SW_RESET)
 #else  // #ifdef ESP32
   if (resetInfo.reason != REASON_DEFAULT_RST && resetInfo.reason != REASON_EXT_SYS_RST && resetInfo.reason != REASON_SOFT_RESTART)
 #endif  // #ifdef ESP32
@@ -297,7 +292,7 @@ void artnet_loop(void){
   // DMX handlers
   dmxA.handler();
   #ifndef ONE_PORT
-    dmxB.handler();
+  dmxB.handler();
   #endif
 
   // Do Pixel FX on port A
@@ -726,7 +721,7 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
       deviceSettings.ip = IPAddress(json["ipAddress"][0],json["ipAddress"][1],json["ipAddress"][2],json["ipAddress"][3]);
       deviceSettings.subnet = IPAddress(json["subAddress"][0],json["subAddress"][1],json["subAddress"][2],json["subAddress"][3]);
       deviceSettings.gateway = IPAddress(json["gwAddress"][0],json["gwAddress"][1],json["gwAddress"][2],json["gwAddress"][3]);
-      deviceSettings.broadcast = deviceSettings.ip | (~deviceSettings.subnet);
+      deviceSettings.broadcast = uint32_t(deviceSettings.ip) | uint32_t(~uint32_t(deviceSettings.subnet));
       //deviceSettings.broadcast = {~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0]), ~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1]), ~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2]), ~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3])};
 
       json.get<String>("nodeName").toCharArray(deviceSettings.nodeName, 18);
@@ -1636,7 +1631,40 @@ static void artStart() {
   artRDM.setTODFlushCallback(todFlush);
 
 #ifdef ESP32
-  // TODO
+  switch (rtc_get_reset_reason(xPortGetCoreID())) {
+  case NO_MEAN:
+  case POWERON_RESET:
+  case SW_RESET:
+  case EXT_CPU_RESET:
+    artRDM.setNodeReport("OK: Device 1 started", ARTNET_RC_POWER_OK);
+    nextNodeReport = millis() + 4000;
+    break;
+
+  case OWDT_RESET:
+  case TG0WDT_SYS_RESET:
+  case TG1WDT_SYS_RESET:
+  case RTCWDT_SYS_RESET:
+  case INTRUSION_RESET:
+  case TGWDT_CPU_RESET:
+  case RTCWDT_CPU_RESET:
+  case RTCWDT_BROWN_OUT_RESET:
+  case RTCWDT_RTC_RESET:
+    artRDM.setNodeReport("ERROR: (WDT) Unexpected device restart", ARTNET_RC_POWER_FAIL);
+    strcpy(nodeError, "Restart error: WDT");
+    nextNodeReport = millis() + 10000;
+    nodeErrorTimeout = millis() + 30000;
+    break;
+
+  case SDIO_RESET:
+      artRDM.setNodeReport("ERROR: (SDIO) Unexpected device restart", ARTNET_RC_POWER_FAIL);
+      strcpy(nodeError, "Restart error: EXCP");
+      nextNodeReport = millis() + 10000;
+      nodeErrorTimeout = millis() + 30000;
+    break;
+    
+  case DEEPSLEEP_RESET:
+    break;
+  }
 #else  // #ifdef ESP32
   switch (resetInfo.reason) {
     case REASON_DEFAULT_RST:  // normal start
