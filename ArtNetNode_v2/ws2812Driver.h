@@ -27,9 +27,19 @@ If not, see http://www.gnu.org/licenses/
 
 #define PIX_LATCH_TIME 25       // 25 works for most
 
+#ifdef ESP32
+#define ENABLE_SPI_OUTPUT
+#endif  // #ifdef ESP32
+
+#ifdef ENABLE_SPI_OUTPUT
+#define SPI_RESET_LENGTH_BITS 100
+#endif  // #ifdef ENABLE_SPI_OUTPUT
+
 enum conf_type {
-  WS2812_800KHZ,
-  WS2812_400KHZ
+  WS2812_RGB_800KHZ,
+  WS2812_RGB_400KHZ,
+  WS2812_RGBW_800KHZ,
+  WS2812_RGBW_400KHZ
 };
 
 class ws2812Driver {
@@ -47,7 +57,7 @@ class ws2812Driver {
     }
     void setBuffer(uint8_t port, uint16_t startChan, uint8_t* data, uint16_t size);
     
-    byte setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b);
+    byte setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0);
     byte setPixel(uint8_t port, uint16_t pixel, uint32_t colour);
     uint32_t getPixel(uint8_t port);
     
@@ -56,6 +66,10 @@ class ws2812Driver {
     uint16_t numPixels(uint8_t port);
     
     byte buffer[2][PIX_MAX_BUFFER_SIZE];
+
+#ifdef ENABLE_SPI_OUTPUT
+    uint8_t spi_buffer[2][PIX_MAX_BUFFER_SIZE*8 + SPI_RESET_LENGTH_BITS];
+#endif  // #ifdef ENABLE_SPI_OUTPUT
     
     bool allowInterruptSingle = true;
     bool allowInterruptDouble = true;
@@ -70,6 +84,7 @@ class ws2812Driver {
     uint16_t _pixels[2];
     uint16_t _config[2];
     uint32_t _nextPix = 0;
+    uint32_t _pixellen;
 };
 
 #endif

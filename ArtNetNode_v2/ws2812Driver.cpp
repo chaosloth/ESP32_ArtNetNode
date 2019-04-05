@@ -20,6 +20,11 @@ If not, see http://www.gnu.org/licenses/
 
 #include "ws2812Driver.h"
 
+#ifdef ESP32
+#include <SPI.h>
+static SPIClass * vspi = NULL;
+static SPIClass * hspi = NULL;
+#endif  // #ifdef ESP32
 
 ws2812Driver::ws2812Driver() {
   _pixels[0] = 0;
@@ -27,8 +32,19 @@ ws2812Driver::ws2812Driver() {
 }
 
 void ws2812Driver::setStrip(uint8_t port, uint8_t pin, uint16_t size, uint16_t config) {
+
+  switch(config) {
+    case WS2812_RGBW_800KHZ:
+    case WS2812_RGBW_400KHZ:
+      _pixellen = 4;
+      break;
+    default:
+      _pixellen = 3;
+      break;
+  }
+  
   _pin[port] = pin;
-  _pixels[port] = size  * 3;
+  _pixels[port] = size  * _pixellen;
   _config[port] = config;
 
   pinMode(_pin[port], OUTPUT);
@@ -42,7 +58,18 @@ void ws2812Driver::setStrip(uint8_t port, uint8_t pin, uint16_t size, uint16_t c
 }
 
 void ws2812Driver::updateStrip(uint8_t port, uint16_t size, uint16_t config) {
-  size = size * 3;
+
+  switch(config) {
+    case WS2812_RGBW_800KHZ:
+    case WS2812_RGBW_400KHZ:
+      _pixellen = 4;
+      break;
+    default:
+      _pixellen = 3;
+      break;
+  }
+
+  size = size * _pixellen;
   
   // Clear the strip if it's shorter than our current strip
   if (size < _pixels[port] || _config[port] != config) {
@@ -77,31 +104,37 @@ void ws2812Driver::setBuffer(uint8_t port, uint16_t startChan, uint8_t* data, ui
   memcpy(&a[startChan], data, size);
 }
 
-byte ws2812Driver::setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b) {
+byte ws2812Driver::setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
   uint8_t* a = buffer[port];
   
-  uint16_t chan = pixel * 3;
+  uint16_t chan = pixel * _pixellen;
 
   // ws2812 is GRB ordering
   a[chan + 1] = r;
   a[chan] = g;
   a[chan + 2] = b;
+  if (_pixellen > 3) {
+    a[chan + 3] = w;
+  }
 }
 
 byte ws2812Driver::setPixel(uint8_t port, uint16_t pixel, uint32_t colour) {
-  setPixel(port, pixel, ((colour >> 16) & 0xFF), ((colour >> 8) & 0xFF), (colour & 0xFF));
+  setPixel(port, pixel, ((colour >> 16) & 0xFF), ((colour >> 8) & 0xFF), (colour & 0xFF), ((colour>>24) & 0xFF));
 }
 
 uint32_t ws2812Driver::getPixel(uint8_t port) {
   uint8_t* b = buffer[port];
-  uint16_t chan = _pixels[port] * 3;
-
+  uint16_t chan = _pixels[port] * _pixellen;
   // ws2812 is GRB ordering - return RGB
-  return ((b[chan + 1] << 16) | (b[chan] << 8) | (b[chan+2]));
+  if (_pixellen > 3) {
+    return ((b[chan + 3] << 24) | (b[chan + 1] << 16) | (b[chan] << 8) | (b[chan+2]));
+  } else {
+    return ((b[chan + 1] << 16) | (b[chan] << 8) | (b[chan+2]));
+  }
 }
 
 uint16_t ws2812Driver::numPixels(uint8_t port) {
-  return _pixels[port] / 3;
+  return _pixels[port] / _pixellen;
 }
 
 
@@ -116,7 +149,66 @@ bool ws2812Driver::show() {
   
   byte* b0 = buffer[0];
   byte* b1 = buffer[1];
+
+#if defined(ENABLE_SPI_OUTPUT) && defined(ESP32)
+
+  if (_pixels[0] != 0) {
+    if (!vspi) {
+      vspi = new SPIClass(VSPI);
+      vspi->begin(-1,_pin[0],-1,-1); 
+      memset(&spi_buffer[0][0], 0, SPI_RESET_LENGTH_BITS);
+    }
+
+    // Convert to SPI data
+    uint8_t *dst = &spi_buffer[0][SPI_RESET_LENGTH_BITS];
+    for (int32_t c = 0; c < _pixels[0]; c++) {
+      uint8_t p = buffer[0][c];
+      for(int32_t d = 7; d >=0; d--) {
+        if (p&(1<<d)) {
+          *dst++ = 0b11110000;
+        } else {
+          *dst++ = 0b11000000;
+        }
+      }
+    }
+
+    //disable interrupts here
+    // TODO: DMA transfer
+    vspi->beginTransaction(SPISettings(5000000, MSBFIRST, SPI_MODE0));
+    vspi->writeBytes((uint8_t *)&spi_buffer[0], uint32_t(dst - (uint8_t *)&spi_buffer[0]));
+    vspi->endTransaction();
+    //enable interrupts here
+  }
   
+  if (_pixels[1] != 0) {
+    if (hspi) {
+      hspi = new SPIClass(HSPI);
+      hspi->begin(-1,_pin[1],-1,-1);
+      memset(&spi_buffer[1][0], 0, SPI_RESET_LENGTH_BITS);
+    }
+
+    // Convert to SPI data
+    // TODO: DMA transfer
+    uint8_t *dst = &spi_buffer[1][SPI_RESET_LENGTH_BITS];
+    for (int32_t c = 0; c < _pixels[1]; c++) {
+      uint8_t p = buffer[1][c];
+      for(int32_t d = 7; d >=0; d--) {
+        if (p&(1<<d)) {
+          *dst++ = 0b11110000;
+        } else {
+          *dst++ = 0b11000000;
+        }
+      }
+    }
+
+    //disable interrupts here
+    hspi->beginTransaction(SPISettings(5000000, MSBFIRST, SPI_MODE0));
+    hspi->writeBytes((uint8_t *)&spi_buffer[1], uint32_t(dst - (uint8_t *)&spi_buffer[1]));
+    hspi->endTransaction();
+    //enable interrupts here
+  }
+  
+#else  // #if defined(ENABLE_SPI_OUTPUT) && defined(ESP32)
   if (_pixels[0] == 0)
     doPixel(b1, _pin[1], _pixels[1]);
   else if (_pixels[1] == 0)
@@ -125,6 +217,7 @@ bool ws2812Driver::show() {
     doPixelDouble(b0, _pin[0], b1, _pin[1], _pixels[1]);
   else
     doPixelDouble(b0, _pin[0], b1, _pin[1], _pixels[0]);
+#endif  // #if defined(ENABLE_SPI_OUTPUT) && defined(ESP32)
 
   _nextPix = millis() + PIX_LATCH_TIME;
   

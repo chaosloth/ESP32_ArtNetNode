@@ -85,10 +85,12 @@ extern "C" {
   #define WS2812_ALLOW_INT_DOUBLE false
   
 #else
-  #define DMX_DIR_A 5   // D1
-  #define DMX_DIR_B 16  // D0
-  #define DMX_TX_A 1
-  #define DMX_TX_B 2
+
+  #define DMX_DIR_A 8 // GPIO32
+  #define DMX_TX_A 32
+
+  #define DMX_DIR_B 9 // GPIO33
+  #define DMX_TX_B 33
 
   #define STATUS_LED_PIN 12
   #define STATUS_LED_MODE_WS2812
