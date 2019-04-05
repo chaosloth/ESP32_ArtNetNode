@@ -113,9 +113,12 @@ void eepromLoad() {
   } else {
     eepromSave();
     delay(500);
-    
+
+#ifdef ESP32
+    // TODO
+#else  // #ifdef ESP32
     ESP.eraseConfig();
+#endif  // #ifdef ESP32
     while(1);
   }
 }
-

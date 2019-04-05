@@ -17,11 +17,18 @@ If not, see http://www.gnu.org/licenses/
 
 #include "espArtNetRDM.h"
 
+#ifdef ESP32
+#include <WiFi.h>
+#define os_malloc malloc
+#define os_free free
+#else  // #ifdef ESP32
 #include <ESP8266WiFi.h>
+#endif  // #ifdef ESP32
 #include <WiFiUdp.h>
 extern "C" {
 #include "mem.h"
 }
+
 
 
 
@@ -45,7 +52,11 @@ void esp8266ArtNetRDM::end() {
   if (_art == 0)
     return;
 
+#ifdef ESP32
+  // TODO
+#else  // #ifdef ESP32
   eUDP.stopAll();
+#endif  // #ifdef ESP32
 
   for (uint8_t g = 0; g < _art->numGroups; g++) {
     for (uint8_t p = 0; p < 4; p++) {
@@ -287,7 +298,11 @@ void esp8266ArtNetRDM::pause() {
     return;
 
   eUDP.flush();
+#ifdef ESP32
+  // TODO
+#else  // #ifdef ESP32
   eUDP.stopAll();
+#endif  // #ifdef ESP32
 }
 
 void esp8266ArtNetRDM::handler() {
@@ -543,7 +558,11 @@ void esp8266ArtNetRDM::_artPoll() {
 
     // Send packet
     eUDP.beginPacket(_art->broadcastIP, ARTNET_PORT);
-    eUDP.write(_artReplyBuffer,ARTNET_REPLY_SIZE);
+    eUDP.write(
+#ifdef ESP32
+  	  (const uint8_t *)
+#endif  // #ifdef ESP32
+      _artReplyBuffer,ARTNET_REPLY_SIZE);
     eUDP.endPacket();
 
     delay(0);
@@ -807,7 +826,11 @@ void esp8266ArtNetRDM::_artIPProgReply() {
 
   // Send packet
   eUDP.beginPacket(eUDP.remoteIP(), ARTNET_PORT);
-  int test = eUDP.write(ipProgReply,ARTNET_IP_PROG_REPLY_SIZE);
+  int test = eUDP.write(
+#ifdef ESP32
+	(const uint8_t *)
+#endif  // #ifdef ESP32
+    ipProgReply,ARTNET_IP_PROG_REPLY_SIZE);
   eUDP.endPacket();
 }
 
@@ -1084,7 +1107,11 @@ void esp8266ArtNetRDM::artTODData(uint8_t g, uint8_t p, uint16_t* uidMan, uint32
 
     // Send packet
     eUDP.beginPacket(_art->broadcastIP, ARTNET_PORT);
-    int test = eUDP.write(artTodData,len);
+    int test = eUDP.write(
+#ifdef ESP32
+  	  (const uint8_t *)
+#endif  // #ifdef ESP32
+      artTodData,len);
     eUDP.endPacket();
 
     if (uidTotal == 0)
@@ -1190,7 +1217,11 @@ void esp8266ArtNetRDM::rdmResponse(rdm_data* c, uint8_t g, uint8_t p) {
     if (_art->group[g]->ports[p]->rdmSenderIP[x] != INADDR_NONE) {
       // Send packet
       eUDP.beginPacket(_art->group[g]->ports[p]->rdmSenderIP[x], ARTNET_PORT);
-      int test = eUDP.write(rdmReply,len);
+      int test = eUDP.write(
+#ifdef ESP32
+	    (const uint8_t *)
+#endif  // #ifdef ESP32
+        rdmReply,len);
       eUDP.endPacket();
     }
   }
@@ -1368,7 +1399,11 @@ void esp8266ArtNetRDM::sendDMX(uint8_t g, uint8_t p, IPAddress bcAddress, uint8_
 
   // Send packet
   eUDP.beginPacket(bcAddress, ARTNET_PORT);
-  eUDP.write(_artDMX,(18 + length));
+  eUDP.write(
+#ifdef ESP32
+	(const uint8_t *)
+#endif  // #ifdef ESP32
+  	_artDMX,(18 + length));
   eUDP.endPacket();
 
 }

@@ -18,7 +18,11 @@ If not, see http://www.gnu.org/licenses/
 #ifndef espArtNetRDM_h
 #define espArtNetRDM_h
 
+#ifdef ESP32
+#include <WiFi.h>
+#else  // #ifdef ESP32
 #include <ESP8266WiFi.h>
+#endif  // #ifdef ESP32
 #include <WiFiUdp.h>
 extern "C" {
 #include "mem.h"

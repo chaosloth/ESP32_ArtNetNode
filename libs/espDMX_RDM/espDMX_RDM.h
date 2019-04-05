@@ -38,10 +38,13 @@ If not, see http://www.gnu.org/licenses/
 #include <inttypes.h>
 #include "Arduino.h"
 extern "C" {
+#ifdef ESP32
+#else  // #ifdef ESP32
 #include "osapi.h"
 #include "ets_sys.h"
 #include "mem.h"
 #include "user_interface.h"
+#endif  // #ifdef ESP32
 }
 #include <inttypes.h>
 #include "Stream.h"
