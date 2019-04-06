@@ -57,8 +57,8 @@ extern "C" {
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <FS.h>
-#include "store.h"
 #include "ws2812Driver.h"
+#include "store.h"
 #include "wsFX.h"
 #include "espDMX_RDM.h"
 #include "espArtNetRDM.h"
@@ -141,7 +141,7 @@ static bool statusLedsOff = false;
 static pixPatterns pixFXA(0, &pixDriver);
 static pixPatterns pixFXB(1, &pixDriver);
 
-static const char PROGMEM mainPage[] = "<!DOCTYPE html><meta content='text/html; charset=utf-8' http-equiv=Content-Type /><title>ESP8266 ArtNetNode Config</title><meta content='Matthew Tong - http://github.com/mtongnz/' name=DC.creator /><meta content=en name=DC.language /><meta content='width=device-width,initial-scale=1' name=viewport /><link href=style.css rel=stylesheet /><div id=page><div class=inner><div class=mast><div class=title>esp8266<h1>ArtNet & sACN</h1>to<h1>DMX & LED Pixels</h1></div><ul class=nav><li class=first><a href='javascript: menuClick(1)'>Device Status</a><li><a href='javascript: menuClick(2)'>WiFi</a><li><a href='javascript: menuClick(3)'>IP & Name</a><li><a href='javascript: menuClick(4)'>Port A</a>"
+static const char PROGMEM mainPage[] = "<!DOCTYPE html><meta content='text/html; charset=utf-8' http-equiv=Content-Type /><title>ESP ArtNetNode Config</title><meta content='Matthew Tong - http://github.com/mtongnz/' name=DC.creator /><meta content=en name=DC.language /><meta content='width=device-width,initial-scale=1' name=viewport /><link href=style.css rel=stylesheet /><div id=page><div class=inner><div class=mast><div class=title>esp<h1>ArtNet & sACN</h1>to<h1>DMX & LED Pixels</h1></div><ul class=nav><li class=first><a href='javascript: menuClick(1)'>Device Status</a><li><a href='javascript: menuClick(2)'>WiFi</a><li><a href='javascript: menuClick(3)'>IP & Name</a><li><a href='javascript: menuClick(4)'>Port A</a>"
     #ifndef ONE_PORT
       "<li><a href='javascript: menuClick(5)'>Port B</a>"
     #endif
@@ -222,7 +222,7 @@ void artnet_setup(void) {
   SPIFFS.begin();
 
   // Check if SPIFFS formatted
-  if (SPIFFS.exists("/formatted.txt")) {
+  if (!SPIFFS.exists("/formatted.txt")) {
     SPIFFS.format();
     
     File f = SPIFFS.open("/formatted.txt", "w");
@@ -1718,18 +1718,15 @@ static void webStart() {
   
   webServer.on("/style.css", [](){
     artRDM.pause();
-
-    File f = SPIFFS.open("/style.css", "r");
-
     // If no style.css in SPIFFS, send default
-    if (!f)
+    if (!SPIFFS.exists("/style.css"))
       webServer.send_P(200, typeCSS, css);
-    else
-      size_t sent = webServer.streamFile(f, typeCSS);
-    
-    f.close();
+    else {
+      File f = SPIFFS.open("/style.css", "r");
+      size_t sent = webServer.streamFile(f, typeCSS);    
+      f.close();
+    }
     webServer.sendHeader("Connection", "close");
-    
     yield();
     artRDM.begin();
   });
