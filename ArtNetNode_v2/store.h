@@ -77,9 +77,9 @@ struct StoreStruct {
 
 
 void eepromSave() {
-  for (uint16_t t = 0; t < sizeof(deviceSettings); t++)
+  for (uint16_t t = 0; t < sizeof(deviceSettings); t++) {
     EEPROM.write(CONFIG_START + t, *((char*)&deviceSettings + t));
-  
+  }
   EEPROM.commit();
 }
 
@@ -95,9 +95,11 @@ void eepromLoad() {
     tmpStore = deviceSettings;
     
     // Copy data to deviceSettings structure
-    for (uint16_t t = 0; t < sizeof(deviceSettings); t++)
+    for (uint16_t t = 0; t < sizeof(deviceSettings); t++) {
       *((char*)&deviceSettings + t) = EEPROM.read(CONFIG_START + t);
+    }
     
+#if 0
     // If we want to restore all our settings
     if (deviceSettings.resetCounter >= 5 || deviceSettings.wdtCounter >= 10) {
       deviceSettings.wdtCounter = 0;
@@ -106,18 +108,17 @@ void eepromLoad() {
       // Store defaults back into main settings
       deviceSettings = tmpStore;
     }
-
+#endif  //#if 0
 
   // If config files dont match, save defaults then erase the ESP config to clear away any residue
   } else {
     eepromSave();
     delay(500);
-
 #ifdef ESP32
-    // TODO
+    // nop
 #else  // #ifdef ESP32
     ESP.eraseConfig();
-#endif  // #ifdef ESP32
     while(1);
+#endif  // #ifdef ESP32
   }
 }

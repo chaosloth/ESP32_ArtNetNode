@@ -335,4 +335,3 @@ uint32_t pixPatterns::Wheel(byte WheelPos) {
     return Colour(WheelPos * 3, 255 - WheelPos * 3, 0);
   }
 }
-

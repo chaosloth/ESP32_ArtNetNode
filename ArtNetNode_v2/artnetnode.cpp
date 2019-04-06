@@ -85,6 +85,7 @@ extern "C" {
   #define WS2812_ALLOW_INT_DOUBLE false
   
 #else
+  #define NO_RESET
 
   #define DMX_DIR_A 8 // GPIO32
   #define DMX_TX_A 32
@@ -235,6 +236,7 @@ void artnet_setup(void) {
     eepromLoad();
 
   // Store our counters for resetting defaults
+#if 0
 #ifdef ESP32
   if (rtc_get_reset_reason(xPortGetCoreID()) != EXT_CPU_RESET && rtc_get_reset_reason(xPortGetCoreID()) != POWERON_RESET && rtc_get_reset_reason(xPortGetCoreID()) != SW_RESET)
 #else  // #ifdef ESP32
@@ -243,6 +245,7 @@ void artnet_setup(void) {
     deviceSettings.wdtCounter++;
   else
     deviceSettings.resetCounter++;
+#endif
 
   // Store values
   eepromSave();
@@ -278,14 +281,16 @@ void artnet_setup(void) {
 
 void artnet_loop(void){
   // If the device lasts for 6 seconds, clear our reset timers
+#if 0
   if (deviceSettings.resetCounter != 0 && millis() > 6000) {
     deviceSettings.resetCounter = 0;
     deviceSettings.wdtCounter = 0;
     eepromSave();
   }
+#endif  // #if 0
   
   webServer.handleClient();
-  
+
   // Get the node details and handle Artnet
   doNodeReport();
   artRDM.handler();

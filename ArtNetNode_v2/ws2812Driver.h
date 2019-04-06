@@ -28,7 +28,7 @@ If not, see http://www.gnu.org/licenses/
 #define PIX_LATCH_TIME 25       // 25 works for most
 
 #ifdef ESP32
-#define ENABLE_SPI_OUTPUT
+//#define ENABLE_SPI_OUTPUT
 #endif  // #ifdef ESP32
 
 #ifdef ENABLE_SPI_OUTPUT
