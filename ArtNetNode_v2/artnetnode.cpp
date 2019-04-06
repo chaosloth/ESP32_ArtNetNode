@@ -93,7 +93,7 @@ extern "C" {
   #define DMX_TX_B 33
 
   #define STATUS_LED_PIN 12
-  #define STATUS_LED_MODE_WS2812
+//  #define STATUS_LED_MODE_WS2812
 //  #define STATUS_LED_MODE_APA106
   #define STATUS_LED_A 0  // Physical wiring order for status LEDs
   #define STATUS_LED_B 1
@@ -200,6 +200,7 @@ void artnet_setup(void) {
 #ifndef ESP32
   wifi_set_sleep_type(NONE_SLEEP_T);
 #endif  // #ifdef ESP32
+
   bool resetDefaults = false;
   
   #ifdef SETTINGS_RESET

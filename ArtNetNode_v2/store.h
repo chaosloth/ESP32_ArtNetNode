@@ -58,18 +58,17 @@ struct StoreStruct {
   uint8_t portApixMode, portBpixMode;
   uint16_t portApixFXstart, portBpixFXstart;
   uint8_t resetCounter, wdtCounter;
-  
 } deviceSettings = {
   CONFIG_VERSION,
-  
   // The default values
   IPAddress(2,0,0,1), IPAddress(255,0,0,0), IPAddress(2,0,0,1), IPAddress(2,255,255,255), IPAddress(2,0,0,1), IPAddress(255,0,0,0), IPAddress(2,255,255,255), IPAddress(2,255,255,255),
   true, false,
   "espArtNetNode", "espArtNetNode by Matthew Tong", "", "", "espArtNetNode", "byMtongnz2017",
   15,
-  TYPE_DMX_OUT, TYPE_DMX_OUT, PROT_ARTNET, PROT_ARTNET, MERGE_HTP, MERGE_HTP,
+//  TYPE_DMX_OUT, TYPE_DMX_OUT, PROT_ARTNET, PROT_ARTNET, MERGE_HTP, MERGE_HTP,
+  TYPE_WS2812, TYPE_WS2812, PROT_ARTNET, PROT_ARTNET, MERGE_HTP, MERGE_HTP,
   0, 0, {0, 1, 2, 3}, 0, 0, {4, 5, 6, 7}, {1, 2, 3, 4}, {5, 6, 7, 8},
-  680, 680, 0, 0,
+  24, 24, WS2812_RGB_800KHZ, WS2812_RGB_800KHZ,
   false,
   FX_MODE_PIXEL_MAP, FX_MODE_PIXEL_MAP,
   1, 1,
