@@ -294,7 +294,7 @@ void artnet_loop(void){
   // Get the node details and handle Artnet
   doNodeReport();
   artRDM.handler();
-  
+
   yield();
 
   // DMX handlers
@@ -340,7 +340,7 @@ void artnet_loop(void){
 
   // Handle rebooting the system
   if (doReboot) {
-    char c[ARTNET_NODE_REPORT_LENGTH] = "Device rebooting...";
+    static char c[ARTNET_NODE_REPORT_LENGTH] = "Device rebooting...";
     artRDM.setNodeReport(c, ARTNET_RC_POWER_OK);
     artRDM.artPollReply();
     
@@ -1427,7 +1427,7 @@ static void doNodeReport() {
   if (nextNodeReport > millis())
     return;
   
-  char c[ARTNET_NODE_REPORT_LENGTH];
+  static char c[128];
 
   if (nodeErrorTimeout > millis())
     nextNodeReport = millis() + 2000;

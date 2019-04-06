@@ -28,7 +28,7 @@ If not, see http://www.gnu.org/licenses/
 #define PIX_LATCH_TIME 25       // 25 works for most
 
 #ifdef ESP32
-//#define ENABLE_SPI_OUTPUT
+#define ENABLE_SPI_OUTPUT
 #endif  // #ifdef ESP32
 
 #ifdef ENABLE_SPI_OUTPUT
@@ -61,7 +61,11 @@ class ws2812Driver {
     byte setPixel(uint8_t port, uint16_t pixel, uint32_t colour);
     uint32_t getPixel(uint8_t port);
     
-    bool show() __attribute__ ((optimize(0)));
+    bool show() 
+#ifndef ENABLE_SPI_OUTPUT
+    __attribute__ ((optimize(0)))
+#endif  // #ifndef ENABLE_SPI_OUTPUT
+    ;
     
     uint16_t numPixels(uint8_t port);
     

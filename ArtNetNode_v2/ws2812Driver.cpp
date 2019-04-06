@@ -29,10 +29,10 @@ static SPIClass * hspi = NULL;
 ws2812Driver::ws2812Driver() {
   _pixels[0] = 0;
   _pixels[1] = 0;  
+  _pixellen = 3;
 }
 
 void ws2812Driver::setStrip(uint8_t port, uint8_t pin, uint16_t size, uint16_t config) {
-
   switch(config) {
     case WS2812_RGBW_800KHZ:
     case WS2812_RGBW_400KHZ:
@@ -58,7 +58,6 @@ void ws2812Driver::setStrip(uint8_t port, uint8_t pin, uint16_t size, uint16_t c
 }
 
 void ws2812Driver::updateStrip(uint8_t port, uint16_t size, uint16_t config) {
-
   switch(config) {
     case WS2812_RGBW_800KHZ:
     case WS2812_RGBW_400KHZ:
@@ -139,6 +138,7 @@ uint16_t ws2812Driver::numPixels(uint8_t port) {
 
 
 bool ws2812Driver::show() {
+  
   if (_nextPix > millis())
     return 0;
 
@@ -181,7 +181,7 @@ bool ws2812Driver::show() {
   }
   
   if (_pixels[1] != 0) {
-    if (hspi) {
+    if (!hspi) {
       hspi = new SPIClass(HSPI);
       hspi->begin(-1,_pin[1],-1,-1);
       memset(&spi_buffer[1][0], 0, SPI_RESET_LENGTH_BITS);

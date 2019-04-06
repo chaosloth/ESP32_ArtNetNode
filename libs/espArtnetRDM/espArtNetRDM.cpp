@@ -1350,7 +1350,7 @@ void esp8266ArtNetRDM::setNodeReport(char* c, uint16_t code) {
   if (_art == 0)
     return;
 
-  strcpy(_art->nodeReport, c);
+  strlcpy(_art->nodeReport, c, ARTNET_NODE_REPORT_LENGTH);
   _art->nodeReportCode = code;
 }
 
