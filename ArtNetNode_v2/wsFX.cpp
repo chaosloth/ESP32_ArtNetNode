@@ -21,9 +21,9 @@ pixPatterns::pixPatterns(uint8_t port, ws2812Driver* p) {
   Port = port;
   NewData = 0;
   lastUpdate = 0;
-  Intensity = 0;
   Speed = 0;
   TotalSteps = 100;
+  Intensity = 0;
 }
     
 // Update the pattern

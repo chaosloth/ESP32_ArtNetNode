@@ -136,7 +136,6 @@ uint16_t ws2812Driver::numPixels(uint8_t port) {
   return _pixels[port] / _pixellen;
 }
 
-
 bool ws2812Driver::show() {
   
   if (_nextPix > millis())
@@ -152,15 +151,14 @@ bool ws2812Driver::show() {
 
 #if defined(ENABLE_SPI_OUTPUT) && defined(ESP32)
 
-  if (_pixels[0] != 0) {
+  if ( _pixels[0] != 0) {
     if (!vspi) {
       vspi = new SPIClass(VSPI);
-      vspi->begin(-1,_pin[0],-1,-1); 
-      memset(&spi_buffer[0][0], 0, SPI_RESET_LENGTH_BITS);
+      vspi->begin(-1,-1,-1,-1); 
     }
 
     // Convert to SPI data
-    uint8_t *dst = &spi_buffer[0][SPI_RESET_LENGTH_BITS];
+    uint8_t *dst = &spi_buffer[0][0];
     for (int32_t c = 0; c < _pixels[0]; c++) {
       uint8_t p = buffer[0][c];
       for(int32_t d = 7; d >=0; d--) {
@@ -172,24 +170,27 @@ bool ws2812Driver::show() {
       }
     }
 
-    //disable interrupts here
-    // TODO: DMA transfer
-    vspi->beginTransaction(SPISettings(5000000, MSBFIRST, SPI_MODE0));
-    vspi->writeBytes((uint8_t *)&spi_buffer[0], uint32_t(dst - (uint8_t *)&spi_buffer[0]));
+    vspi->beginTransaction(SPISettings(7200000, MSBFIRST, SPI_MODE0));
+    for (size_t c=0; c<SPI_RESET_LENGTH_BITS; c++) {
+      vspi->write(0);
+    }
+    uint8_t *src = &spi_buffer[0][0];
+    int32_t leds = _pixels[0] / _pixellen;
+    for (size_t c=0; c<leds; c++) {
+      vspi->writeBytes(src, _pixellen * 8);
+      src += _pixellen * 8;
+    }
     vspi->endTransaction();
-    //enable interrupts here
   }
-  
+
   if (_pixels[1] != 0) {
     if (!hspi) {
       hspi = new SPIClass(HSPI);
-      hspi->begin(-1,_pin[1],-1,-1);
-      memset(&spi_buffer[1][0], 0, SPI_RESET_LENGTH_BITS);
+      hspi->begin(-1,-1,-1,-1);
     }
 
     // Convert to SPI data
-    // TODO: DMA transfer
-    uint8_t *dst = &spi_buffer[1][SPI_RESET_LENGTH_BITS];
+    uint8_t *dst = &spi_buffer[1][0];
     for (int32_t c = 0; c < _pixels[1]; c++) {
       uint8_t p = buffer[1][c];
       for(int32_t d = 7; d >=0; d--) {
@@ -201,11 +202,17 @@ bool ws2812Driver::show() {
       }
     }
 
-    //disable interrupts here
-    hspi->beginTransaction(SPISettings(5000000, MSBFIRST, SPI_MODE0));
-    hspi->writeBytes((uint8_t *)&spi_buffer[1], uint32_t(dst - (uint8_t *)&spi_buffer[1]));
+    hspi->beginTransaction(SPISettings(7200000, MSBFIRST, SPI_MODE0));
+    for (size_t c=0; c<SPI_RESET_LENGTH_BITS; c++) {
+      hspi->write(0);
+    }
+    uint8_t *src = &spi_buffer[1][0];
+    int32_t leds = _pixels[1] / _pixellen;
+    for (size_t c=0; c<leds; c++) {
+      hspi->writeBytes(src, _pixellen * 8);
+      src += _pixellen * 8;
+    }
     hspi->endTransaction();
-    //enable interrupts here
   }
   
 #else  // #if defined(ENABLE_SPI_OUTPUT) && defined(ESP32)

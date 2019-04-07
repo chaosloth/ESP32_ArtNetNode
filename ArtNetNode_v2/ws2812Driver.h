@@ -72,7 +72,7 @@ class ws2812Driver {
     byte buffer[2][PIX_MAX_BUFFER_SIZE];
 
 #ifdef ENABLE_SPI_OUTPUT
-    uint8_t spi_buffer[2][PIX_MAX_BUFFER_SIZE*8 + SPI_RESET_LENGTH_BITS];
+    uint8_t spi_buffer[2][PIX_MAX_BUFFER_SIZE*8];
 #endif  // #ifdef ENABLE_SPI_OUTPUT
     
     bool allowInterruptSingle = true;
