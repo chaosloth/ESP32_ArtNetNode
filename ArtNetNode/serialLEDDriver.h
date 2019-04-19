@@ -74,9 +74,6 @@ class serialLEDDriver {
 
     void doPixel(uint8_t* data, uint8_t pin, uint16_t numBytes);
 
-    bool allowInterruptSingle = true;
-    bool allowInterruptDouble = true;
-
   private:
     void setConfig(uint16_t config);
 

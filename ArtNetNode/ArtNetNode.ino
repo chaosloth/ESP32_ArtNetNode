@@ -36,27 +36,56 @@
 
 #include <rom/rtc.h>
 
+#define CONFIG_VERSION "300"
+#define FIRMWARE_VERSION "3.0.0"
+#define ART_FIRM_VERSION 0x0300   // Firmware given over Artnet (2 uint8_ts)
+
+#define ARTNET_OEM 0x0123     // Artnet OEM Code
+#define ESTA_MAN 0x555F       // ESTA Manufacturer Code
+#define ESTA_DEV 0xEE000000   // RDM Device ID (used with Man Code to make 48bit UID)
+
+//
+// Unchangable pins in ESP32:
+//
+// GPIO1  -> U0TXD -> DMX uart port A pin
+// GPIO10 -> U1TXD -> DMX uart port B pin
+// Direction pins for DMX can be anything, set below
+//
+// GPIO23 -> VSPID -> serial LED output port A pin
+// GPIO18 -> VSPICLK -> serial LED output point A clock pin (for APA102)
+// GPIO13 -> HSPID -> serial LED output port B pin
+// GPIO14 -> HSPICLK -> serial LED output point B clock pin (for APA102)
+//
+
+//
+// Customizable pins:
+//
+#define DMX_DIR_A       0     // DMX data UART Direction port A pin 
+#define DMX_DIR_B       39    // DMX data UART Direction port B pin
+
+//#define NO_RESET            // Un comment to disable the reset button
+#ifndef NO_RESET
+#define SETTINGS_RESET  34    // GPIO34 is a user button on Olimex ESP32-PoE
+#endif
+
+//
+// Olimex ESP32-PoE notes:
+// 
+// Port A serial LED is not accessible! (Unless you don't use ethernet and solder directly the ESP32-WROOM module)
+//
+// Port B serial LED output pin is: EXT2 pin 10
+// Port B serial CLK output pin is: EXT2 pin 9 (for APA102)
+// 
+// Port A DMX uart pin is: EXT1 pin 6 (GPIO1)
+// Port A DMX dir pin is: EXT1 pin 5 (GPIO0), set DMX_DIR_A to 0 above
+//
+// Port B DMX uart is not accessible! (Unless you solder directly to the ESP32-WROOM module)
+//
+// So ideal setup is to set Port A as DMX and port B and serial LED
+//
+
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
-
-#define FIRMWARE_VERSION "3.0.0"
-#define ART_FIRM_VERSION 0x0210   // Firmware given over Artnet (2 uint8_ts)
-
-#define ARTNET_OEM 0x0123    // Artnet OEM Code
-#define ESTA_MAN 0x555F      // ESTA Manufacturer Code
-#define ESTA_DEV 0xEE000000  // RDM Device ID (used with Man Code to make 48bit UID)
-
-#define NO_RESET             // Un comment to disable the reset button
-
-#define WS2812_ALLOW_INT_SINGLE false
-#define WS2812_ALLOW_INT_DOUBLE false
-
-#define DMX_DIR_A   8   // DMX port A pin
-#define DMX_DIR_B   9   // DMX port B pin
-
-#ifndef NO_RESET
-#define SETTINGS_RESET 14
-#endif
 
 static uint8_t portA[5] = { 0 };
 static uint8_t portB[5] = { 0 };
@@ -67,12 +96,11 @@ static uint32_t statusTimer = 0;
 
 static serialLEDDriver pixDriver;
 static espArtNetRDM artRDM;
+
 static WebServer webServer(80);
 static DynamicJsonBuffer jsonBuffer;
 
 static File fsUploadFile;
-static bool statusLedsDim = true;
-static bool statusLedsOff = false;
 
 static pixPatterns pixFXA(0, &pixDriver);
 static pixPatterns pixFXB(1, &pixDriver);
@@ -108,9 +136,6 @@ static void artStart();
 static void portSetup();
 static void startHotspot();
 static void doNodeReport();
-
-// Change this if the settings structure changes
-#define CONFIG_VERSION "300"
 
 enum fx_mode {
   FX_MODE_PIXEL_MAP = 0,
@@ -189,69 +214,63 @@ struct StoreStruct {
   uint16_t portApixFXstart;
   uint16_t portBpixFXstart;
 
-  uint8_t resetCounter;
-  uint8_t wdtCounter;
-
 } deviceSettings = {
 
   CONFIG_VERSION,
 
   // The default values
-  IPAddress(2, 0, 0, 1),      // ip
-  IPAddress(255, 0, 0, 0),    // subnet
-  IPAddress(2, 0, 0, 1),      // gateway
+  IPAddress(2, 0, 0, 1),       // ip
+  IPAddress(255, 0, 0, 0),     // subnet
+  IPAddress(2, 0, 0, 1),       // gateway
   IPAddress(2, 255, 255, 255), // broadcast
-  IPAddress(2, 0, 0, 1),      // hotspotIP
-  IPAddress(255, 0, 0, 0),    // hotspotSubnet
+  IPAddress(2, 0, 0, 1),       // hotspotIP
+  IPAddress(255, 0, 0, 0),     // hotspotSubnet
   IPAddress(2, 255, 255, 255), // hotspotBroadcast
   IPAddress(2, 255, 255, 255), // dmxInBroadcast
 
-  true,                       // dhcpEnable
-  false,                      // standAloneEnable
-  false,                      // ethernetEnable
+  true,                        // dhcpEnable
+  false,                       // standAloneEnable
+  false,                       // ethernetEnable
 
-  "espArtNetNode",            // nodeName
-  "espArtNetNode",            // longName
-  "",                         // wifiSSID
-  "",                         // wifiPass
-  "espArtNetNode",            // hotspotSSID
-  "1234567890123",            // hotspotPass
-  15,                         // hotspotDelay
+  "espArtNetNode",             // nodeName
+  "espArtNetNode",             // longName
+  "",                          // wifiSSID
+  "",                          // wifiPass
+  "espArtNetNode",             // hotspotSSID
+  "1234567890123",             // hotspotPass
+  15,                          // hotspotDelay
 
-  TYPE_SERIAL_LED,            // portAmode
-  TYPE_SERIAL_LED,            // portBmode
-  PROT_ARTNET,                // portAprot
-  PROT_ARTNET,                // portBprot
-  MERGE_HTP,                  // portAmerge
-  MERGE_HTP,                  // portBmerge
+  TYPE_DMX_OUT,                // portAmode
+  TYPE_SERIAL_LED,             // portBmode
+  PROT_ARTNET,                 // portAprot
+  PROT_ARTNET,                 // portBprot
+  MERGE_HTP,                   // portAmerge
+  MERGE_HTP,                   // portBmerge
 
-  0,                          // portAnet
-  0,                          // portAsub
-  {0, 1, 2, 3},               // portAuni[4]
+  0,                           // portAnet
+  0,                           // portAsub
+  {0, 1, 2, 3},                // portAuni[4] 
 
-  0,                          // portBnet
-  0,                          // portBsub
-  {4, 5, 6, 7},               // portBuni[4]
+  0,                           // portBnet
+  0,                           // portBsub
+  {4, 5, 6, 7},                // portBuni[4]
 
-  {1, 2, 3, 4},               // portAsACNuni[4]
-  {5, 6, 7, 8},               // portBsACNuni[4]
+  {1, 2, 3, 4},                // portAsACNuni[4]
+  {5, 6, 7, 8},                // portBsACNuni[4]
 
-  24,                         // portAnumPix
-  24,                         // portBnumPix
+  24,                          // portAnumPix
+  24,                          // portBnumPix
 
-  WS2812_RGB_800KHZ,          // portApixConfig
-  WS2812_RGB_800KHZ,          // portBpixConfig
+  WS2812_RGB_800KHZ,           // portApixConfig
+  WS2812_RGB_800KHZ,           // portBpixConfig
 
-  false,                      // doFirmwareUpdate
+  false,                       // doFirmwareUpdate
 
-  FX_MODE_PIXEL_MAP,          // portApixMode
-  FX_MODE_PIXEL_MAP,          // portBpixMode
+  FX_MODE_PIXEL_MAP,           // portApixMode
+  FX_MODE_PIXEL_MAP,           // portBpixMode
 
-  1,                          // portApixFXstart
-  1,                          // portBpixFXstart
-
-  0,                          // resetCounter
-  0                           // wdtCounter
+  1,                           // portApixFXstart
+  1,                           // portBpixFXstart 
 };
 
 static void eepromSave() {
@@ -277,26 +296,14 @@ static void eepromLoad() {
       *((char*)&deviceSettings + t) = EEPROM.read(t);
     }
 
-#if 0
-    // If we want to restore all our settings
-    if (deviceSettings.resetCounter >= 5 || deviceSettings.wdtCounter >= 10) {
-      deviceSettings.wdtCounter = 0;
-      deviceSettings.resetCounter = 0;
-
-      // Store defaults back into main settings
-      deviceSettings = tmpStore;
-    }
-#endif  //#if 0
-
     // If config files dont match, save defaults
   } else {
     eepromSave();
     delay(500);
   }
 }
+
 void setup(void) {
-  //pinMode(4, OUTPUT);
-  //digitalWrite(4, LOW);
 
   // Make direction input to avoid boot garbage being sent out
   pinMode(DMX_DIR_A, OUTPUT);
@@ -336,16 +343,9 @@ void setup(void) {
   }
 
   // Load our saved values or store defaults
-  if (!resetDefaults)
+  if (!resetDefaults) {
     eepromLoad();
-
-  // Store our counters for resetting defaults
-#if 0
-  if (rtc_get_reset_reason(xPortGetCoreID()) != EXT_CPU_RESET && rtc_get_reset_reason(xPortGetCoreID()) != POWERON_RESET && rtc_get_reset_reason(xPortGetCoreID()) != SW_RESET)
-    deviceSettings.wdtCounter++;
-  else
-    deviceSettings.resetCounter++;
-#endif
+  }
 
   // Store values
   eepromSave();
@@ -357,7 +357,7 @@ void setup(void) {
   webStart();
 
   // Don't start our Artnet or DMX in firmware update mode or after multiple WDT resets
-  if (!deviceSettings.doFirmwareUpdate && deviceSettings.wdtCounter <= 3) {
+  if (!deviceSettings.doFirmwareUpdate) {
 
     // We only allow 1 DMX input - and RDM can't run alongside DMX in
     if (deviceSettings.portAmode == TYPE_DMX_IN && deviceSettings.portBmode == TYPE_RDM_OUT) {
@@ -368,28 +368,21 @@ void setup(void) {
     artStart();
 
     // Don't open any ports for a bit to let the ESP spill it's garbage to serial
-    while (millis() < 3500)
+    while (millis() < 3500) {
       yield();
+    }
 
     // Port Setup
     portSetup();
 
-  } else
+  } else {
     deviceSettings.doFirmwareUpdate = false;
-
+  }
+  
   delay(10);
 }
 
 void loop(void) {
-
-  // If the device lasts for 6 seconds, clear our reset timers
-#if 0
-  if (deviceSettings.resetCounter != 0 && millis() > 6000) {
-    deviceSettings.resetCounter = 0;
-    deviceSettings.wdtCounter = 0;
-    eepromSave();
-  }
-#endif  // #if 0
 
   webServer.handleClient();
 
@@ -1456,9 +1449,6 @@ static void portSetup() {
     pixDriver.setStrip(1, deviceSettings.portBnumPix, deviceSettings.portBpixConfig);
   }
 #endif  // #ifndef ONE_PORT
-
-  pixDriver.allowInterruptSingle = WS2812_ALLOW_INT_SINGLE;
-  pixDriver.allowInterruptDouble = WS2812_ALLOW_INT_DOUBLE;
 }
 
 static void artStart() {
