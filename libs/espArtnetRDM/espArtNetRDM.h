@@ -18,19 +18,12 @@ If not, see http://www.gnu.org/licenses/
 #ifndef espArtNetRDM_h
 #define espArtNetRDM_h
 
-#ifdef ESP32
 #include <WiFi.h>
-#else  // #ifdef ESP32
-#include <ESP8266WiFi.h>
-#endif  // #ifdef ESP32
 #include <WiFiUdp.h>
-extern "C" {
-#include "mem.h"
-}
+
 #include "rdmDataTypes.h"
 #include "artnet.h"
 #include "e131.h"
-
 
 typedef void (*artDMXCallBack)(uint8_t, uint8_t, uint16_t, bool);
 typedef void (*artSyncCallBack)(void);
@@ -147,14 +140,11 @@ struct _artnet_def {
 
 typedef struct _artnet_def artnet_device;
 
-
-
-
-class esp8266ArtNetRDM {
+class espArtNetRDM {
   public:
     // init fuctions
-    esp8266ArtNetRDM();
-    ~esp8266ArtNetRDM();
+    espArtNetRDM();
+    ~espArtNetRDM();
     
     void init(IPAddress, IPAddress, bool, char*, char*, uint16_t, uint16_t, uint8_t*);
     void init(IPAddress ip, IPAddress sub, bool dhcp, uint16_t oem, uint16_t esta, uint8_t* mac) {

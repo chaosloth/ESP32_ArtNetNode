@@ -31,34 +31,23 @@ If not, see http://www.gnu.org/licenses/
 #define RDM_DISCOVERY_FULL        1
 #define RDM_DISCOVERY_TOD_WIPE    2
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include "Arduino.h"
-extern "C" {
-#ifdef ESP32
-#else  // #ifdef ESP32
-#include "osapi.h"
-#include "ets_sys.h"
-#include "mem.h"
-#include "user_interface.h"
-#endif  // #ifdef ESP32
-}
+
+#include <Arduino.h>
+
 #include <inttypes.h>
 #include "Stream.h"
-
 
 #include "rdm.h"
 #include "rdmDataTypes.h"
 #include "rdmFIFO.h"
 
-
 typedef void (*rdmCallBackFunc)(rdm_data*);
 typedef void (*todCallBackFunc)(void);
 typedef void (*inputCallBackFunc)(uint16_t);
-
 
 // DMX states
 enum dmx_state {

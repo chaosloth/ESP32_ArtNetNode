@@ -16,12 +16,8 @@ If not, see http://www.gnu.org/licenses/
 
 #include "espDMX_RDM.h"
 
-#ifdef ESP32
-
 #include "soc/uart_reg.h"
 #include "soc/uart_struct.h"
-#define os_malloc malloc
-#define os_free free
 
 #define UART_REG_BASE(u)    ((u==0)?DR_REG_UART_BASE:(      (u==1)?DR_REG_UART1_BASE:(    (u==2)?DR_REG_UART2_BASE:0)))
 #define UART_RXD_IDX(u)     ((u==0)?U0RXD_IN_IDX:(          (u==1)?U1RXD_IN_IDX:(         (u==2)?U2RXD_IN_IDX:0)))
@@ -33,8 +29,6 @@ static uart_dev_t *uart_dev_array[2] = {
     (volatile uart_dev_t *)(DR_REG_UART_BASE),
     (volatile uart_dev_t *)(DR_REG_UART1_BASE),
 };
-
-#endif  // #ifdef ESP32
 
 espDMX dmxA(0);
 espDMX dmxB(1);
@@ -68,7 +62,7 @@ static uint8_t rxUser;
 static unsigned long rdmTimer = 0;
 
 void ICACHE_RAM_ATTR dmx_interrupt_handler(void) {
-#ifdef ESP32
+
     // stop other interrupts for TX
   noInterrupts();
 
@@ -123,63 +117,6 @@ void ICACHE_RAM_ATTR dmx_interrupt_handler(void) {
         dmxB.inputBreak();
     }
   }
-
-#else  // #ifdef ESP32
-  // stop other interrupts for TX
-  noInterrupts();
-
-  
-  if(U0IS & (1 << UIFE)) {    // TX0 Fifo Empty
-    U0IC = (1 << UIFE);       // clear status flag
-    dmxA._transmit();
-  }
-
-  if(U1IS & (1 << UIFE)) {    // TX1 Fifo Empty
-    U1IC = (1 << UIFE);       // clear status flag
-    dmxB._transmit();
-  }
-
-  interrupts();
-
-
-  // RDM replies
-  if (rdmInUse) {
-    if ((U0IS & (1 << UIBD)) || ( U0IS & (1 << UIFR))) {    // RX0 Break Detect
-      U0IC = (1 << UIBD) | (1 << UIFR);                     // clear status flags
-      rdmBreak = true;
-    }
-
-    if(U0IS & (1 << UIFF)) {    // RX0 Fifo Full
-      if (rxUser == 0)
-        dmxA.rdmReceived();
-      else
-        dmxB.rdmReceived();
-    }
-
-  // DMX input
-  } else if (dmx_input) {
-    
-    // Data received
-    while (U0IS & (1 << UIFF)) {
-      if (rxUser == 0)
-        dmxA.dmxReceived((uint8_t)USF(0));
-      else
-        dmxB.dmxReceived((uint8_t)USF(0));
-      
-      U0IC = (1 << UIFF);   // Clear interrupt
-    }
-  
-    // Break/Frame error detect
-    if ((U0IS & (1 << UIBD)) || ( U0IS & (1 << UIFR))) {    // RX0 Break Detect
-      U0IC = (1 << UIBD) | (1 << UIFR);                     // clear status flags
-
-      if (rxUser == 0)
-        dmxA.inputBreak();
-      else
-        dmxB.inputBreak();
-    }
-  }
-#endif  // #ifdef ESP32
 }
 
 static void uart_ignore_char(char c) { return; }
@@ -187,50 +124,27 @@ static void uart_ignore_char(char c) { return; }
 uint16_t dmx_get_tx_fifo_room(dmx_t* dmx) {
   if(dmx == 0 || dmx->state == DMX_NOT_INIT)
     return 0;
-#ifdef ESP32
   return UART_TX_FIFO_SIZE - uart_dev_array[0]->status.txfifo_cnt;
-#else  // #ifdef ESP32
-  return UART_TX_FIFO_SIZE - ((USS(dmx->dmx_nr) >> USTXC) & 0xff);
-#endif  // #ifdef ESP32
 }
 
 void dmx_flush(dmx_t* dmx) {
     if(dmx == 0 || dmx->state == DMX_NOT_INIT)
         return;
-#ifdef ESP32
 	// copied from esp32-hal-uart.c
     while(uart_dev_array[0]->status.txfifo_cnt || uart_dev_array[0]->status.st_utx_out) {};
-#else  // #ifdef ESP32
-    uint32_t tmp = 0x00000000;
-    tmp |= (1 << UCTXRST);
-
-    // Clear TX Fifo
-    USC0(dmx->dmx_nr) |= (tmp);
-    USC0(dmx->dmx_nr) &= ~(tmp);
-#endif  // #ifdef ESP32
 }
 
 void rx_flush() {
-#ifdef ESP32
 	// copied from esp32-hal-uart.c
 	while(uart_dev_array[0]->status.rxfifo_cnt != 0 || (uart_dev_array[0]->mem_rx_status.wr_addr != uart_dev_array[0]->mem_rx_status.rd_addr)) {
 		READ_PERI_REG(UART_FIFO_REG(0));
 	}
-#else  // #ifdef ESP32
-    uint32_t tmp = 0x00000000;
-    tmp |= (1 << UCRXRST);
-
-    // Clear RX Fifo
-    USC0(0) |= (tmp);
-    USC0(0) &= ~(tmp);
-#endif  // #ifdef ESP32
 }
 
 void dmx_interrupt_enable(dmx_t* dmx) {
     if(dmx == 0 || dmx->state == DMX_NOT_INIT)
         return;
 
-#ifdef ESP32
     // Clear all interrupt bits
     uart_dev_array[dmx->dmx_nr]->int_clr.val = 0xffffffff;
 
@@ -274,82 +188,32 @@ void dmx_interrupt_enable(dmx_t* dmx) {
 
       esp_intr_alloc(UART_INTR_SOURCE(0), (int)ESP_INTR_FLAG_IRAM, (void (*)(void *))&dmx_interrupt_handler, NULL, &uart_intr_handle[0]);
     }
-
-#else  // #ifdef ESP32
-    // Clear all interrupt bits
-    USIC(dmx->dmx_nr) = 0x1ff;
-
-    if (dmx->dmx_nr == 1) {
-      // Set TX Fifo Empty trigger point
-      USC1(1) = (0 << UCFET);
-
-      // UART at 250k for DMX data
-      USD(1) = (ESP8266_CLOCK / DMX_TX_BAUD);
-      USC0(1) = DMX_TX_CONF;
-    }
-    
-    // Attach out interrupt handler function
-    ETS_UART_INTR_ATTACH(&dmx_interrupt_handler, NULL);
-
-    // Enable UART Interrupts
-    ETS_UART_INTR_ENABLE();
-
-    // UART0 setup
-    if (!timer1Set) {
-      timer1Set = true;
-
-      // UART at 250k for DMX data
-      USD(0) = (ESP8266_CLOCK / DMX_TX_BAUD);
-      USC0(0) = DMX_TX_CONF;
-      USC1(0) = (127 << UCFFT);
-
-      // Disable RX Fifo Full & Break Detect & Frame Error Interupts
-      //USIE(0) &= ~((1 << UIFF) | (1 << UIBD) | (1 << UIFR));
-    }
-#endif  // #ifdef ESP32
 }
 
 void dmx_interrupt_arm(dmx_t* dmx) {
   if(dmx == 0 || dmx->state == DMX_NOT_INIT)
       return;
-#ifdef ESP32
   // Clear all interupt bits
   uart_dev_array[dmx->dmx_nr]->int_clr.val = 0xffffffff;
 
   // Enable TX Fifo Empty Interupt
   uart_dev_array[dmx->dmx_nr]->int_ena.txfifo_empty = 1;
-#else  // #ifdef ESP32
-  // Clear all interupt bits
-  USIC(dmx->dmx_nr) = 0xffff;
-  
-  // Enable TX Fifo Empty Interupt
-  USIE(dmx->dmx_nr) |= (1 << UIFE);
-#endif  // #ifdef ESP32
 }
 
 void dmx_interrupt_disarm(dmx_t* dmx) {
   if(dmx == 0 || dmx->state == DMX_NOT_INIT)
       return;
-#ifdef ESP32
   uart_dev_array[dmx->dmx_nr]->int_ena.txfifo_empty = 0;
-#else  // #ifdef ESP32
-  USIE(dmx->dmx_nr) &= ~(1 << UIFE);
-#endif  // #ifdef ESP32
 }
 
 void rdm_interrupt_arm(dmx_t* dmx) {
   if(dmx == 0 || dmx->state == DMX_NOT_INIT)
       return;
   
-#ifdef ESP32
   // Enable RX Fifo Full & Break Detect & Frame Error Interupts
   uart_dev_array[0]->int_ena.rxfifo_full = 1;
   uart_dev_array[0]->int_ena.brk_det = 1;
   uart_dev_array[0]->int_ena.frm_err = 1;
-#else  // #ifdef ESP32
-  // Enable RX Fifo Full & Break Detect & Frame Error Interupts
-  USIE(0) |= (1 << UIFF) | (1 << UIBD) | (1 << UIFR);
-#endif  // #ifdef ESP32
 
   digitalWrite(dmx->dirPin, LOW);
   rdmBreak = false;
@@ -365,15 +229,10 @@ void rdm_interrupt_arm(dmx_t* dmx) {
 }
 
 void rdm_interrupt_disarm() {
-#ifdef ESP32
   // Disable RX Fifo Full & Break Detect & Frame Error Interupts
   uart_dev_array[0]->int_ena.rxfifo_full = 0;
   uart_dev_array[0]->int_ena.brk_det = 0;
   uart_dev_array[0]->int_ena.frm_err = 0;
-#else  // #ifdef ESP32
-  // Disable RX Fifo Full & Break Detect & Frame Error Interupts
-  USIE(0) &= ~((1 << UIFF) | (1 << UIBD) | (1 << UIFR));
-#endif  // #ifdef ESP32
 
   // TEIE &= ~TEIE1;//edge int disable
   // T1L = 0;
@@ -385,13 +244,9 @@ void dmx_set_baudrate(dmx_t* dmx, int baud_rate) {
   if(dmx == 0 || dmx->state == DMX_NOT_INIT)
       return;
 
-#ifdef ESP32
   uint32_t clk_div = ((getApbFrequency()<<4)/baud_rate);
   uart_dev_array[dmx->dmx_nr]->clk_div.div_int = clk_div>>4 ;
   uart_dev_array[dmx->dmx_nr]->clk_div.div_frag = clk_div & 0xf;
-#else  // #ifdef ESP32
-  USD(dmx->dmx_nr) = (ESP8266_CLOCK / baud_rate);
-#endif  // #ifdef ESP32
 }
 
 void dmx_clear_buffer(dmx_t* dmx) {
@@ -406,13 +261,13 @@ void dmx_set_buffer(dmx_t* dmx, byte* buf) {
     return;
 
   if (dmx->ownBuffer)
-    os_free(dmx->data);
+    free(dmx->data);
 
   if (buf == NULL) {
-    buf = (byte*) os_malloc(sizeof(byte) * 512);
+    buf = (byte*) malloc(sizeof(byte) * 512);
 
     if(!buf) {
-      os_free(buf);
+      free(buf);
       dmx->ownBuffer = 0;
       return;
     }
@@ -454,14 +309,14 @@ void dmx_uninit(dmx_t* dmx) {
       dmx->todCallBack = NULL;
     }
 
-    os_free(dmx->data1);
+    free(dmx->data1);
     dmx->data1 = 0;
 
     dmx->isInput = false;
     dmx->inputCallBack = NULL;
   
     if (dmx->ownBuffer)
-      os_free(dmx->data);
+      free(dmx->data);
 }
 
 int dmx_get_state(dmx_t* dmx) {
@@ -542,32 +397,20 @@ espDMX::~espDMX(void) {
 
 void espDMX::begin(uint8_t dir, byte* buf) {
   if(_dmx == 0) {
-    _dmx = (dmx_t*) os_malloc(sizeof(dmx_t));
+    _dmx = (dmx_t*) malloc(sizeof(dmx_t));
     
     if(_dmx == 0) {
-      os_free(_dmx);
+      free(_dmx);
       _dmx = 0;
       return;
     }
 
-    _dmx->data1 = (byte*) os_malloc(sizeof(byte) * 512);
+    _dmx->data1 = (byte*) malloc(sizeof(byte) * 512);
     memset(_dmx->data1, 0, 512);
 
     _dmx->ownBuffer = 0;
 
-#ifdef ESP32
-	// TODO?!
-#else  // #ifdef ESP32
-    system_set_os_print(0);
-#endif  // #ifdef ESP32
-
-    ets_install_putc1(
-#ifdef ESP32
-    (void (*)(char)) 
-#else  // #ifdef ESP32
-    (void *) 
-#endif  // #ifdef ESP32
-    &uart_ignore_char);
+    ets_install_putc1((void (*)(char))&uart_ignore_char);
     
     // Initialize variables
     _dmx->dmx_nr = _dmx_nr;
@@ -636,7 +479,7 @@ void espDMX::end() {
 
   dmx_uninit(_dmx);
 
-  os_free(_dmx);
+  free(_dmx);
 
   _dmx = 0;
 }
@@ -686,11 +529,7 @@ void ICACHE_RAM_ATTR espDMX::_transmit(void) {
 //    txSize = (txSize > DMX_MAX_BYTES_PER_INT) ? DMX_MAX_BYTES_PER_INT : txSize;      
 
 //    for(; txSize; --txSize)
-#ifdef ESP32
       uart_dev_array[_dmx->dmx_nr]->fifo.rw_byte = _dmx->data1[_dmx->txChan++];
-#else  //#ifdef ESP32
-      USF(_dmx->dmx_nr) = _dmx->data1[_dmx->txChan++];
-#endif  // #ifdef ESP32
 
 //    dmx_interrupt_arm(dmx);
 
@@ -698,11 +537,7 @@ void ICACHE_RAM_ATTR espDMX::_transmit(void) {
   } else {
 
     //dmx_interrupt_disarm(_dmx);
-#ifdef ESP32
     uart_dev_array[_dmx->dmx_nr]->int_ena.txfifo_empty = 0;
-#else  // #ifdef ESP32
-    USIE(_dmx->dmx_nr) &= ~(1 << UIFE);
-#endif  // #ifdef ESP32
 
     if (_dmx->state == DMX_TX) {
 
@@ -770,8 +605,6 @@ void espDMX::rdmReceived() {
   if (_dmx == 0 || _dmx->state != RDM_RX)
     return;
 
-#ifdef ESP32
-
   while(uart_dev_array[0]->status.rxfifo_cnt) {  
     _dmx->rdm_response.buffer[_dmx->rx_pos] = uart_dev_array[0]->fifo.rw_byte;
 
@@ -789,38 +622,6 @@ void espDMX::rdmReceived() {
   }
   // Clear interupt flags
   uart_dev_array[0]->int_clr.val = 0xffffffff;
-
-#else  // #ifdef ESP32
-  while((USS(0) >> USRXC) & 0x7F) {  
-    _dmx->rdm_response.buffer[_dmx->rx_pos] = USF(0);
-
-    // Handle multiple 0xFE to start discovery response
-    if (_dmx->rx_pos == 1 && _dmx->rdm_response.buffer[0] == 0xFE && _dmx->rdm_response.buffer[1] == 0xFE)
-      continue;
-
-    // Handle break & MAB
-    if (rdmBreak || _dmx->rdm_response.buffer[0] == 0) {
-      _dmx->rx_pos = 0;
-      rdmBreak = false;
-      continue;
-    }
-    _dmx->rx_pos++;
-
-    // Get packet size and adjust timer accordingly
-//    unsigned long newTime = micros() + (44 * _dmx->rdm_response.buffer[2]);
-//    if (newTime > rdmTimer)
-//      rdmTimer = newTime;
-
-//    if (_dmx->rx_pos == 3 && _dmx->rdm_response.buffer[0] == 0xCC && _dmx->rdm_response.buffer[1] == 0x01) {
-//      uint16_t newTime = (_dmx->rdm_response.buffer[2] * RDM_BYTE_TIME);
-//      if (newTime > T1L)
-//        T1L = (newTime & 0x7FFFFF);
-//    }
-  }
-
-  // Clear interupt flags
-  USIC(0) = USIS(0);
-#endif  // #ifdef ESP32
 }
 
 void espDMX::rdmDiscovery(uint8_t discType) {
@@ -1213,7 +1014,6 @@ void espDMX::dmxIn(bool doIn) {
   if (_dmx == 0)
     return;
 
-#ifdef ESP32
   if (doIn) {
     _dmx->isInput = true;
 
@@ -1287,74 +1087,6 @@ void espDMX::dmxIn(bool doIn) {
     dmx_input = false;
     rdmPause(false);
   }
-#else  // #ifdef ESP32
-  if (doIn) {
-    _dmx->isInput = true;
-
-    // Clear our buffers
-    memset(_dmx->data, 0, 512);
-    memset(_dmx->data1, 0, 512);
-
-    dmx_interrupt_disarm(_dmx);
-    rdmPause(true);
-      
-    // Turn RX pin into UART mode
-    pinMode(3, SPECIAL);
-    
-    // If dirPin is specified then set to in direction
-    if (_dmx->dirPin != 255) {
-      pinMode(_dmx->dirPin, OUTPUT);
-      digitalWrite(_dmx->dirPin, LOW);
-    }
-
-    // Set txPin to idle
-    digitalWrite(_dmx->txPin, HIGH);
-
-    dmx_input = true;
-    rxUser = _dmx->dmx_nr;
-    _dmx->state = DMX_RX_IDLE;
-  
-    noInterrupts();
-
-    // UART at 250k for DMX data
-    USD(0) = (ESP8266_CLOCK / DMX_TX_BAUD);
-    USC0(0) = DMX_TX_CONF;
-    USC1(0) = (1 << UCFFT);	// RX Fifo full threshold
-  
-    rx_flush();                   // flush rx buffer
-    USIC(0) = 0x1ff;              // clear all interrupt flags
-  
-    // Enable RX Fifo Full, Break Detect & Frame Error Interupts
-    USIE(0) |= (1 << UIFF) | (1 << UIBD) | (1 << UIFR);
-
-    // Attach out interupt handler function
-    ETS_UART_INTR_ATTACH(&dmx_interrupt_handler, NULL);
-
-    // Enable UART Interrupts
-    ETS_UART_INTR_ENABLE();
-
-    interrupts();
-
-  } else {
-
-    // Disable RX Fifo Full, Break Detect & Frame Error Interupts
-    USIE(0) &= ~((1 << UIFF) | (1 << UIBD) | (1 << UIFR));
-    
-    if (_dmx->dirPin != 255) {
-      pinMode(_dmx->dirPin, OUTPUT);
-      digitalWrite(_dmx->dirPin, HIGH);
-    }
-
-    // Clear output buffer & reset channel count
-    memset(_dmx->data, 0, 512);
-    memset(_dmx->data1, 0, 512);
-    _dmx->numChans = 0;
-    
-    _dmx->isInput = false;
-    dmx_input = false;
-    rdmPause(false);
-  }
-#endif  // #ifdef ESP32
 }
 
 void espDMX::setInputCallback(inputCallBackFunc callback) {
@@ -1469,13 +1201,9 @@ void espDMX::handler() {
       return;
 
     // Wait for empty FIFO
-#ifdef ESP32  
-    while (uart_dev_array[_dmx->dmx_nr]->status.txfifo_cnt != 0)
+    while (uart_dev_array[_dmx->dmx_nr]->status.txfifo_cnt != 0) {
       yield();
-#else  // #ifdef ESP32
-    while (((USS(_dmx->dmx_nr) >> USTXC) & 0xff) != 0)
-      yield();
-#endif // #ifdef ESP32
+    }
 
     // Allow last channel to be fully sent
     delayMicroseconds(44);
@@ -1502,19 +1230,11 @@ void espDMX::handler() {
       _dmx->last_dmx_time = millis();
       _dmx->txChan = 0;
 
-#ifdef ESP32
       // Set TX Fifo Empty trigger point
       uart_dev_array[_dmx->dmx_nr]->conf1.txfifo_empty_thrhd = 50;
 
       // DMX Start Code 0
       uart_dev_array[_dmx->dmx_nr]->fifo.rw_byte = 0;
-#else  // #ifdef ESP32
-      // Set TX Fifo empty trigger point
-      USC1(_dmx->dmx_nr) = (50 << UCFET);
-
-      // DMX Start Code 0
-      USF(_dmx->dmx_nr) = 0;
-#endif  // #ifdef ESP32
       
     } else if (_dmx->state == RDM_START) {
 
@@ -1522,20 +1242,12 @@ void espDMX::handler() {
       rdmTimer = micros() + 5000;
       _dmx->txChan = 1;		// start code is already in the buffer
 
-#ifdef ESP32
       // Set TX Fifo empty trigger point & RX Fifo full threshold
       uart_dev_array[_dmx->dmx_nr]->conf1.txfifo_empty_thrhd = 0;
       uart_dev_array[_dmx->dmx_nr]->conf1.rxfifo_full_thrhd = 127;
 
       // RDM Start Code 0xCC
       uart_dev_array[_dmx->dmx_nr]->fifo.rw_byte = 0xCC;
-#else  // #ifdef ESP32
-      // Set TX Fifo empty trigger point & RX Fifo full threshold
-      USC1(_dmx->dmx_nr) = (0 << UCFET) | (127 << UCFFT);
-
-      // RDM Start Code 0xCC
-      USF(_dmx->dmx_nr) = 0xCC;
-#endif  // #ifdef ESP32
     }
 
     fillTX();
@@ -1547,12 +1259,9 @@ void espDMX::fillTX(void) {
   uint16_t txSize = _dmx->txSize - _dmx->txChan;
   txSize = (txSize > fifoRoom) ? fifoRoom : txSize;   
 
-  for(; txSize; --txSize)
-#ifdef ESP32
+  for(; txSize; --txSize) {
     uart_dev_array[_dmx->dmx_nr]->fifo.rw_byte = _dmx->data1[_dmx->txChan++];
-#else  // #ifdef ESP32
-    USF(_dmx->dmx_nr) = _dmx->data1[_dmx->txChan++];
-#endif  // #ifdef ESP32
+  }
 
   dmx_interrupt_arm(_dmx);
 }

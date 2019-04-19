@@ -67,7 +67,7 @@ static uint8_t statusLedData[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint32_t statusTimer = 0;
 
 static serialLEDDriver pixDriver;
-static esp8266ArtNetRDM artRDM;
+static espArtNetRDM artRDM;
 static WebServer webServer(80);
 static DynamicJsonBuffer jsonBuffer;
 
