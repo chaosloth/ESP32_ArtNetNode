@@ -142,15 +142,15 @@ class espArtNetRDM {
     espArtNetRDM();
     ~espArtNetRDM();
 
-    void init(IPAddress, IPAddress, bool, char*, char*, uint16_t, uint16_t, uint8_t*);
+    void init(IPAddress, IPAddress, bool, const char*, const char*, uint16_t, uint16_t, uint8_t*);
     void init(IPAddress ip, IPAddress sub, bool dhcp, uint16_t oem, uint16_t esta, uint8_t* mac) {
       init(ip, sub, dhcp, "espArtNetNode", "espArtNetNode", oem, esta, mac);
     };
-    void init(char* shortName, char* longName, uint16_t oem, uint16_t esta, uint8_t* mac) {
+    void init(const char* shortName, const char* longName, uint16_t oem, uint16_t esta, uint8_t* mac) {
       init(INADDR_NONE, INADDR_NONE, false, shortName, longName, oem, esta, mac);
       setDefaultIP();
     };
-    void init(char* shortName, uint16_t oem, uint16_t esta, uint8_t* mac) {
+    void init(const char* shortName, uint16_t oem, uint16_t esta, uint8_t* mac) {
       init(INADDR_NONE, INADDR_NONE, false, shortName, shortName, oem, esta, mac);
       setDefaultIP();
     };
@@ -220,10 +220,10 @@ class espArtNetRDM {
     // Set Merge & node name
     void setMerge(uint8_t, uint8_t, bool);
     bool getMerge(uint8_t, uint8_t);
-    void setShortName(char*);
-    char* getShortName();
-    void setLongName(char*);
-    char* getLongName();
+    void setShortName(const char*);
+    const char* getShortName();
+    void setLongName(const char*);
+    const char* getLongName();
 
     // RDM functions
     void rdmResponse(rdm_data*, uint8_t, uint8_t);
@@ -234,7 +234,7 @@ class espArtNetRDM {
     IPAddress getSubnetMask();
     bool getDHCP();
 
-    void setNodeReport(char*, uint16_t);
+    void setNodeReport(const char*, uint16_t);
     void artPollReply();
 
     void sendDMX(uint8_t, uint8_t, IPAddress, uint8_t*, uint16_t);

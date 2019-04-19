@@ -46,7 +46,7 @@ void espArtNetRDM::end() {
   _art = 0;
 }
 
-void espArtNetRDM::init(IPAddress ip, IPAddress subnet, bool dhcp, char* shortname, char* longname, uint16_t oem, uint16_t esta, uint8_t* mac) {
+void espArtNetRDM::init(IPAddress ip, IPAddress subnet, bool dhcp, const char* shortname, const char* longname, uint16_t oem, uint16_t esta, uint8_t* mac) {
   if (_art != 0)
     free(_art);
 
@@ -178,7 +178,7 @@ uint8_t espArtNetRDM::addPort(uint8_t g, uint8_t p, uint8_t universe, uint8_t t,
 
 bool espArtNetRDM::closePort(uint8_t g, uint8_t p) {
   if (_art == 0 || g >= _art->numGroups)
-    return 0;
+    return false;
 
   group_def* group = _art->group[g];
 
@@ -197,7 +197,7 @@ bool espArtNetRDM::closePort(uint8_t g, uint8_t p) {
   // Mark port as empty
   group->ports[p] = 0;
   group->numPorts--;
-  group->ports[p] == 0;
+  return true;
 }
 
 void espArtNetRDM::setArtDMXCallback(artDMXCallBack callback) {
@@ -378,8 +378,8 @@ void espArtNetRDM::_artPoll() {
   _artReplyBuffer[5] = 'e';
   _artReplyBuffer[6] = 't';
   _artReplyBuffer[7] = 0;
-  _artReplyBuffer[8] = ARTNET_ARTPOLL_REPLY;      	// op code lo-hi
-  _artReplyBuffer[9] = ARTNET_ARTPOLL_REPLY >> 8; 	// 0x2100 = artPollReply
+  _artReplyBuffer[8] = uint8_t(ARTNET_ARTPOLL_REPLY);      	// op code lo-hi
+  _artReplyBuffer[9] = uint8_t(ARTNET_ARTPOLL_REPLY >> 8); 	// 0x2100 = artPollReply
   _artReplyBuffer[10] = _art->deviceIP[0];        	// ip address
   _artReplyBuffer[11] = _art->deviceIP[1];
   _artReplyBuffer[12] = _art->deviceIP[2];
@@ -758,8 +758,8 @@ void espArtNetRDM::_artIPProgReply() {
   ipProgReply[5] = 'e';
   ipProgReply[6] = 't';
   ipProgReply[7] = 0;
-  ipProgReply[8] = ARTNET_IP_PROG_REPLY;      // op code lo-hi
-  ipProgReply[9] = ARTNET_IP_PROG_REPLY >> 8; // 0x2100 = artPollReply
+  ipProgReply[8] = uint8_t(ARTNET_IP_PROG_REPLY);      // op code lo-hi
+  ipProgReply[9] = uint8_t(ARTNET_IP_PROG_REPLY >> 8); // 0x2100 = artPollReply
   ipProgReply[10] = 0;
   ipProgReply[11] = 14;                 // artNet version (14)
   ipProgReply[12] = 0;
@@ -787,7 +787,7 @@ void espArtNetRDM::_artIPProgReply() {
 
   // Send packet
   eUDP.beginPacket(eUDP.remoteIP(), ARTNET_PORT);
-  int test = eUDP.write((const uint8_t *)ipProgReply, ARTNET_IP_PROG_REPLY_SIZE);
+  eUDP.write((const uint8_t *)ipProgReply, ARTNET_IP_PROG_REPLY_SIZE);
   eUDP.endPacket();
 }
 
@@ -1015,7 +1015,7 @@ void espArtNetRDM::artTODData(uint8_t g, uint8_t p, uint16_t* uidMan, uint32_t* 
   artTodData[5] = 'e';
   artTodData[6] = 't';
   artTodData[7] = 0;
-  artTodData[8] = ARTNET_TOD_DATA;      // op code lo-hi
+  artTodData[8] = uint8_t(ARTNET_TOD_DATA);      // op code lo-hi
   artTodData[9] = ARTNET_TOD_DATA >> 8;
   artTodData[10] = 0;
   artTodData[11] = 14;                 // artNet version (14)
@@ -1040,9 +1040,6 @@ void espArtNetRDM::artTODData(uint8_t g, uint8_t p, uint16_t* uidMan, uint32_t* 
   artTodData[25] = uidTotal;
 
   uint8_t blockCount = 0;
-  uint16_t uidPos = 0;
-
-  uint16_t f = uidTotal;
 
   while (1) {
     artTodData[26] = blockCount;
@@ -1064,7 +1061,7 @@ void espArtNetRDM::artTODData(uint8_t g, uint8_t p, uint16_t* uidMan, uint32_t* 
 
     // Send packet
     eUDP.beginPacket(_art->broadcastIP, ARTNET_PORT);
-    int test = eUDP.write((const uint8_t *)artTodData, len);
+    eUDP.write((const uint8_t *)artTodData, len);
     eUDP.endPacket();
 
     if (uidTotal == 0)
@@ -1150,8 +1147,8 @@ void espArtNetRDM::rdmResponse(rdm_data* c, uint8_t g, uint8_t p) {
   rdmReply[5] = 'e';
   rdmReply[6] = 't';
   rdmReply[7] = 0;
-  rdmReply[8] = ARTNET_RDM;          // op code lo-hi
-  rdmReply[9] = ARTNET_RDM >> 8;
+  rdmReply[8] = uint8_t(ARTNET_RDM);          // op code lo-hi
+  rdmReply[9] = uint8_t(ARTNET_RDM >> 8);
   rdmReply[10] = 0;
   rdmReply[11] = 14;                 // artNet version (14)
   rdmReply[12] = 0x01;               // RDM version - RDM STANDARD V1.0
@@ -1170,7 +1167,7 @@ void espArtNetRDM::rdmResponse(rdm_data* c, uint8_t g, uint8_t p) {
     if (_art->group[g]->ports[p]->rdmSenderIP[x] != INADDR_NONE) {
       // Send packet
       eUDP.beginPacket(_art->group[g]->ports[p]->rdmSenderIP[x], ARTNET_PORT);
-      int test = eUDP.write((const uint8_t *)rdmReply, len);
+      eUDP.write((const uint8_t *)rdmReply, len);
       eUDP.endPacket();
     }
   }
@@ -1274,32 +1271,32 @@ bool espArtNetRDM::getMerge(uint8_t g, uint8_t p) {
 
 
 
-void espArtNetRDM::setShortName(char* name) {
+void espArtNetRDM::setShortName(const char* name) {
   if (_art == 0)
     return;
   memcpy(_art->shortName, name, ARTNET_SHORT_NAME_LENGTH);
 }
 
-char* espArtNetRDM::getShortName() {
+const char* espArtNetRDM::getShortName() {
   if (_art == 0)
     return NULL;
   return _art->shortName;
 }
 
 
-void espArtNetRDM::setLongName(char* name) {
+void espArtNetRDM::setLongName(const char* name) {
   if (_art == 0)
     return;
   memcpy(_art->longName, name, ARTNET_LONG_NAME_LENGTH);
 }
 
-char* espArtNetRDM::getLongName() {
+const char* espArtNetRDM::getLongName() {
   if (_art == 0)
     return NULL;
   return _art->longName;
 }
 
-void espArtNetRDM::setNodeReport(char* c, uint16_t code) {
+void espArtNetRDM::setNodeReport(const char* c, uint16_t code) {
   if (_art == 0)
     return;
 
@@ -1332,8 +1329,8 @@ void espArtNetRDM::sendDMX(uint8_t g, uint8_t p, IPAddress bcAddress, uint8_t* d
   _artDMX[5] = 'e';
   _artDMX[6] = 't';
   _artDMX[7] = 0;
-  _artDMX[8] = ARTNET_ARTDMX;      	// op code lo-hi
-  _artDMX[9] = ARTNET_ARTDMX >> 8;
+  _artDMX[8] = uint8_t(ARTNET_ARTDMX);      	// op code lo-hi
+  _artDMX[9] = uint8_t(ARTNET_ARTDMX >> 8);
   _artDMX[10] = 0;  		   	// protocol version (14)
   _artDMX[11] = 14;
   _artDMX[12] = _dmxSeqID++;		// sequence ID
@@ -1417,7 +1414,7 @@ void espArtNetRDM::_e131Receive(e131_packet_t* e131Buffer) {
 
 
   uint16_t uni = (e131Buffer->universe << 8) | ((e131Buffer->universe >> 8) & 0xFF);
-  uint16_t numberOfChannels = (e131Buffer->property_value_count << 8) | ((e131Buffer->property_value_count >> 8) & 0xFF) - 1;
+  uint16_t numberOfChannels = ((e131Buffer->property_value_count << 8) | ((e131Buffer->property_value_count >> 8) & 0xFF)) - 1;
   uint16_t startChannel = (e131Buffer-> first_address << 8) | ((e131Buffer-> first_address >> 8) & 0xFF);
   uint16_t seq = e131Buffer->sequence_number;
 

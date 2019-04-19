@@ -84,15 +84,15 @@
 // So ideal setup is to set Port A as DMX and port B and serial LED
 //
 
+#undef ETH_CLK_MODE
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
+
+#undef ETH_PHY_POWER
 #define ETH_PHY_POWER 12
 
 static uint8_t portA[5] = { 0 };
 static uint8_t portB[5] = { 0 };
 static uint8_t MAC_array[6] = { 0 };
-static uint8_t dmxInSeqID = 0;
-static uint8_t statusLedData[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint32_t statusTimer = 0;
 
 static serialLEDDriver pixDriver;
 static espArtNetRDM artRDM;
@@ -421,7 +421,7 @@ void loop(void) {
 
   // Handle received DMX
   if (newDmxIn) {
-    uint8_t g, p, n;
+    uint8_t g, p;
 
     newDmxIn = false;
 
@@ -564,10 +564,10 @@ static void ipHandle() {
     deviceSettings.subnet = artRDM.getSubnetMask();
     deviceSettings.gateway = deviceSettings.ip;
     deviceSettings.gateway[3] = 1;
-    deviceSettings.broadcast = {~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0]), 
-                                ~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1]), 
-                                ~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2]), 
-                                ~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3])};
+    deviceSettings.broadcast = {uint8_t(~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0])), 
+                                uint8_t(~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1])), 
+                                uint8_t(~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2])), 
+                                uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))};
     deviceSettings.dhcpEnable = 0;
 
     doReboot = true;
@@ -703,10 +703,10 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
       deviceSettings.gateway = IPAddress(json["gwAddress"][0], json["gwAddress"][1], json["gwAddress"][2], json["gwAddress"][3]);
       deviceSettings.broadcast = uint32_t(deviceSettings.ip) | uint32_t(~uint32_t(deviceSettings.subnet));
  
-      //deviceSettings.broadcast = {~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0]), 
-      //                            ~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1]), 
-      //                            ~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2]), 
-      //                            ~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3])};
+      //deviceSettings.broadcast = {uint8_t(~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0])), 
+      //                            uint8_t(~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1])), 
+      //                            uint8_t(~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2])), 
+      //                            uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))};
 
       json.get<String>("nodeName").toCharArray(deviceSettings.nodeName, 18);
       json.get<String>("longName").toCharArray(deviceSettings.longName, 64);
@@ -796,15 +796,12 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
           }
 
           uint16_t oldLen = deviceSettings.portAnumPix;
-          bool lenChanged = false;
 
           // If pixel size has changed
           if (newLen <= 680 && oldLen != newLen) {
             // Update our pixel strip
             deviceSettings.portAnumPix = newLen;
             pixDriver.updateStrip(1, deviceSettings.portAnumPix, deviceSettings.portApixConfig);
-
-            lenChanged = true;
 
             // If the old mode was pixel map then update the Artnet ports
             if (deviceSettings.portApixMode == FX_MODE_PIXEL_MAP) {
@@ -918,15 +915,12 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
             newLen = 680;
 
           uint16_t oldLen = deviceSettings.portBnumPix;
-          bool lenChanged = false;
 
           // If pixel size has changed
           if (newLen <= 680 && oldLen != newLen) {
             // Update our pixel strip
             deviceSettings.portBnumPix = newLen;
             pixDriver.updateStrip(1, deviceSettings.portBnumPix, deviceSettings.portBpixConfig);
-
-            lenChanged = true;
 
             // If the old mode was pixel map then update the Artnet ports
             if (deviceSettings.portBpixMode == FX_MODE_PIXEL_MAP)
@@ -994,6 +988,7 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
       // Catch errors
       return false;
   }
+  return false;
 }
 
 static void ajaxLoad(uint8_t page, JsonObject& jsonReply) {
@@ -1551,6 +1546,7 @@ static void artStart() {
     case NO_MEAN:
     case POWERON_RESET:
     case SW_RESET:
+    case SW_CPU_RESET:
     case EXT_CPU_RESET:
       artRDM.setNodeReport("OK: Device 1 started", ARTNET_RC_POWER_OK);
       nextNodeReport = millis() + 4000;
@@ -1604,7 +1600,7 @@ static void webStart() {
       webServer.send_P(200, typeCSS, css);
     else {
       File f = SPIFFS.open("/style.css", "r");
-      size_t sent = webServer.streamFile(f, typeCSS);
+      webServer.streamFile(f, typeCSS);
       f.close();
     }
     webServer.sendHeader("Connection", "close");
@@ -1708,10 +1704,10 @@ static void ETHEvent(WiFiEvent_t event)
       if (deviceSettings.gateway == INADDR_NONE) {
         deviceSettings.gateway = ETH.gatewayIP();
       }
-      deviceSettings.broadcast = {~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0]),
-                                  ~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1]),
-                                  ~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2]),
-                                  ~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3])
+      deviceSettings.broadcast = {uint8_t(~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0])),
+                                  uint8_t(~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1])),
+                                  uint8_t(~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2])),
+                                  uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))
                                };
       esp_eth_get_mac(MAC_array);
       eth_connected = true;
@@ -1734,7 +1730,7 @@ static void ETHEvent(WiFiEvent_t event)
 static void wifiStart() {
   // If it's the default WiFi SSID, make it unique
   if (strcmp(deviceSettings.hotspotSSID, "espArtNetNode") == 0 || deviceSettings.hotspotSSID[0] == '\0') {
-    sprintf(deviceSettings.hotspotSSID, "espArtNetNode_%05u", ((ESP.getEfuseMac() >> 32) & 0xFFFF));
+    sprintf(deviceSettings.hotspotSSID, "espArtNetNode_%05u", uint32_t((ESP.getEfuseMac() >> 32) & 0xFFFF));
   }
 
   if (deviceSettings.standAloneEnable) {
@@ -1742,10 +1738,10 @@ static void wifiStart() {
 
     deviceSettings.ip = deviceSettings.hotspotIp;
     deviceSettings.subnet = deviceSettings.hotspotSubnet;
-    deviceSettings.broadcast = {~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0]),
-                                ~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1]),
-                                ~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2]),
-                                ~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3])
+    deviceSettings.broadcast = {uint8_t(~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0])),
+                                uint8_t(~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1])),
+                                uint8_t(~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2])),
+                                uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))
                                };
 
     return;
@@ -1791,10 +1787,10 @@ static void wifiStart() {
         deviceSettings.gateway = WiFi.gatewayIP();
       }
 
-      deviceSettings.broadcast = {~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0]),
-                                  ~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1]),
-                                  ~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2]),
-                                  ~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3])
+      deviceSettings.broadcast = { uint8_t(~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0])),
+                                   uint8_t(~deviceSettings.subnet[1] | (deviceSettings.ip[1] & deviceSettings.subnet[1])),
+                                   uint8_t(~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2])),
+                                   uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))
                                  };
     } else {
       WiFi.config(deviceSettings.ip, deviceSettings.gateway, deviceSettings.subnet);
