@@ -610,7 +610,7 @@
 #define E120_NR_PACKET_SIZE_UNSUPPORTED                  0x0008 /* Incoming message exceeds buffer capacity.                    */
 #define E120_NR_SUB_DEVICE_OUT_OF_RANGE                  0x0009 /* Sub-Device is out of range or unknown.                       */
 #define E120_NR_PROXY_BUFFER_FULL                        0x000A /* Proxy buffer is full and can not store any more Queued       */
-                                                                /* Message or Status Message responses.                         */
+/* Message or Status Message responses.                         */
 
 /********************************************************************************************************************************/
 /********************************************************************************************************************************/
@@ -629,7 +629,7 @@
 /* E1.37-1 Table A-3: Merge Mode Defines                */
 /********************************************************/
 #define E137_1_MERGEMODE_DEFAULT                         0x00 /* Preset overrides DMX512 default behavior as defined in         */
-                                                              /* E1.20 PRESET_PLAYBACK                                          */
+/* E1.20 PRESET_PLAYBACK                                          */
 #define E137_1_MERGEMODE_HTP                             0x01 /* Highest Takes Precedence on slot by slot basis                 */
 #define E137_1_MERGEMODE_LTP                             0x02 /* Latest Takes Precedence from Preset or DMX512 on slot by slot  */
 #define E137_1_MERGEMODE_DMX_ONLY                        0x03 /* DMX512 only, Preset ignored                                    */

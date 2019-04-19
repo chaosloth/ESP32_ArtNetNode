@@ -1,15 +1,15 @@
 /*
-espArtNetRDM v1 (pre-release) library
-Copyright (c) 2016, Matthew Tong
-https://github.com/mtongnz/
-Modified from https://github.com/forkineye/E131/blob/master/E131.h
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
-later version.
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-You should have received a copy of the GNU General Public License along with this program.
-If not, see http://www.gnu.org/licenses/
+  espArtNetRDM v1 (pre-release) library
+  Copyright (c) 2016, Matthew Tong
+  https://github.com/mtongnz/
+  Modified from https://github.com/forkineye/E131/blob/master/E131.h
+  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
+  later version.
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License along with this program.
+  If not, see http://www.gnu.org/licenses/
 */
 #ifndef espArtNetRDM_h
 #define espArtNetRDM_h
@@ -47,7 +47,7 @@ struct _port_def {
 
   // Port universe
   uint8_t portUni;
-  
+
   // DMX final values buffer
   uint8_t* dmxBuffer;
   uint16_t dmxChans;
@@ -81,8 +81,8 @@ struct _group_def {
   // Port Address
   uint8_t netSwitch = 0x00;
   uint8_t subnet = 0x00;
-  
-  port_def* ports[4] = {0,0,0,0};
+
+  port_def* ports[4] = {0, 0, 0, 0};
   uint8_t numPorts = 0;
 
   IPAddress cancelMergeIP;
@@ -93,7 +93,7 @@ struct _group_def {
 typedef struct _group_def group_def;
 
 struct _artnet_def {
-  
+
   IPAddress deviceIP;
   IPAddress subnet;
   IPAddress broadcastIP;
@@ -102,7 +102,7 @@ struct _artnet_def {
 
   IPAddress syncIP;
   unsigned long lastSync;
-  
+
   uint8_t deviceMAC[6];
   bool dhcp = true;
 
@@ -123,7 +123,7 @@ struct _artnet_def {
   uint32_t nodeReportCounter;
   uint16_t nodeReportCode;
   char nodeReport[ARTNET_NODE_REPORT_LENGTH];
-  
+
   // callback functions
   artDMXCallBack dmxCallBack = 0;
   artSyncCallBack syncCallBack = 0;
@@ -141,7 +141,7 @@ class espArtNetRDM {
     // init fuctions
     espArtNetRDM();
     ~espArtNetRDM();
-    
+
     void init(IPAddress, IPAddress, bool, char*, char*, uint16_t, uint16_t, uint8_t*);
     void init(IPAddress ip, IPAddress sub, bool dhcp, uint16_t oem, uint16_t esta, uint8_t* mac) {
       init(ip, sub, dhcp, "espArtNetNode", "espArtNetNode", oem, esta, mac);
@@ -158,7 +158,7 @@ class espArtNetRDM {
       init(INADDR_NONE, INADDR_NONE, false, "espArtNetNode", "espArtNetNode", oem, esta, mac);
       setDefaultIP();
     };
-    
+
     void setFirmwareVersion(uint16_t);
     void setDefaultIP();
 
@@ -186,7 +186,7 @@ class espArtNetRDM {
     void setE131(uint8_t, uint8_t, bool);
     bool getE131(uint8_t, uint8_t);
     void setE131Uni(uint8_t, uint8_t, uint16_t);
-    
+
     // handler function for including in loop()
     void handler();
 
@@ -228,7 +228,7 @@ class espArtNetRDM {
     // RDM functions
     void rdmResponse(rdm_data*, uint8_t, uint8_t);
     void artTODData(uint8_t, uint8_t, uint16_t*, uint32_t*, uint16_t, uint8_t);
-    
+
     // get network settings
     IPAddress getIP();
     IPAddress getSubnetMask();
@@ -241,10 +241,10 @@ class espArtNetRDM {
 
   private:
     artnet_device* _art = 0;
-    
+
     int _artOpCode(unsigned char*);
     void _artIPProgReply();
-    
+
     // handlers for received packets
     void _artPoll(void);
     void _artDMX(unsigned char*);
@@ -259,7 +259,7 @@ class espArtNetRDM {
     void _artRDMSub(unsigned char*);
 
     void _e131Receive(e131_packet_t*);
-    
+
     uint8_t _dmxSeqID = 0;
     uint8_t e131Count = 0;	// the number of e131 ports currently open
 

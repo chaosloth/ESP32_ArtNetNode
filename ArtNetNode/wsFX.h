@@ -1,20 +1,20 @@
 /*
-ArtNetNode v3.0.0
-Copyright (c) 2018, Tinic Uro
-https://github.com/tinic/ESP8266_ArtNetNode_v2
+  ArtNetNode v3.0.0
+  Copyright (c) 2018, Tinic Uro
+  https://github.com/tinic/ESP8266_ArtNetNode_v2
 
-ESP8266_ArtNetNode v2.0.0
-Copyright (c) 2016, Matthew Tong
-https://github.com/mtongnz/ESP8266_ArtNetNode_v2
+  ESP8266_ArtNetNode v2.0.0
+  Copyright (c) 2016, Matthew Tong
+  https://github.com/mtongnz/ESP8266_ArtNetNode_v2
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
-later version.
+  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
+  later version.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-You should have received a copy of the GNU General Public License along with this program.
-If not, see http://www.gnu.org/licenses/
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License along with this program.
+  If not, see http://www.gnu.org/licenses/
 */
 #ifndef wsFX_h
 #define wsFX_h
@@ -26,10 +26,10 @@ class serialLEDDriver;
 class pixPatterns {
   public:
     pattern  ActivePattern;       // which pattern is running
-    
+
     unsigned long Interval;       // milliseconds between updates
     unsigned long lastUpdate;     // last update of position
-    
+
     uint32_t Colour1, Colour2;    // What colours are in use
     uint32_t Colour1Raw, Colour2Raw;    // Colours pre-intensity
     uint16_t TotalSteps;          // total number of steps in the pattern
@@ -38,10 +38,10 @@ class pixPatterns {
     uint8_t Size1, Size, Fade, Pos; // size, fading & position for static looks
     uint8_t Intensity;
     bool NewData;
-    
+
     uint8_t Port;                 // port number.
     serialLEDDriver* pixDriver;      // the pixel driver
-    
+
     pixPatterns(uint8_t port, serialLEDDriver* p);
     bool Update(void);
     void Increment(void);
