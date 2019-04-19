@@ -1,4 +1,8 @@
 /*
+ESP8266_ArtNetNode v3.0.0
+Copyright (c) 2018, Tinic Uro
+https://github.com/tinic/ESP8266_ArtNetNode_v2
+
 ESP8266_ArtNetNode v2.0.0
 Copyright (c) 2016, Matthew Tong
 https://github.com/mtongnz/ESP8266_ArtNetNode_v2
@@ -12,11 +16,11 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.
 If not, see http://www.gnu.org/licenses/
 */
-
+#include <Arduino.h>
 
 #include "wsFX.h"
 
-pixPatterns::pixPatterns(uint8_t port, ws2812Driver* p) {
+pixPatterns::pixPatterns(uint8_t port, serialLEDDriver* p) {
   pixDriver = p;
   Port = port;
   NewData = 0;
@@ -323,7 +327,7 @@ uint8_t pixPatterns::Blue(uint32_t colour) {
 
 // Input a value 0 to 255 to get a colour value.
 // The colours are a transition r - g - b - back to r.
-uint32_t pixPatterns::Wheel(byte WheelPos) {
+uint32_t pixPatterns::Wheel(uint8_t WheelPos) {
   WheelPos = 255 - WheelPos;
   if(WheelPos < 85)
     return Colour(255 - WheelPos * 3, 0, WheelPos * 3);

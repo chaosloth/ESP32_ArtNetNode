@@ -1,4 +1,8 @@
 /*
+ESP8266_ArtNetNode v3.0.0
+Copyright (c) 2018, Tinic Uro
+https://github.com/tinic/ESP8266_ArtNetNode_v2
+
 ESP8266_ArtNetNode v2.0.0
 Copyright (c) 2016, Matthew Tong
 https://github.com/mtongnz/ESP8266_ArtNetNode_v2
@@ -13,12 +17,8 @@ You should have received a copy of the GNU General Public License along with thi
 If not, see http://www.gnu.org/licenses/
 */
 
-
 // Change this if the settings structure changes
-#define CONFIG_VERSION "b5g"
-
-// Dont change this
-#define CONFIG_START 0
+#define CONFIG_VERSION "300"
 
 enum fx_mode {
   FX_MODE_PIXEL_MAP = 0,
@@ -29,7 +29,7 @@ enum p_type {
   TYPE_DMX_OUT = 0,
   TYPE_RDM_OUT = 1,
   TYPE_DMX_IN = 2,
-  TYPE_WS2812 = 3
+  TYPE_SERIAL_LED = 3
 };
 
 enum p_protocol {
@@ -47,38 +47,125 @@ struct StoreStruct {
   char version[4];
 
   // Device settings:
-  IPAddress ip, subnet, gateway, broadcast, hotspotIp, hotspotSubnet, hotspotBroadcast, dmxInBroadcast;
-  bool dhcpEnable, standAloneEnable, ethernetEnable;
-  char nodeName[18], longName[64], wifiSSID[40], wifiPass[40], hotspotSSID[20], hotspotPass[20];
+  IPAddress ip;
+  IPAddress subnet;
+  IPAddress gateway;
+  IPAddress broadcast;
+  IPAddress hotspotIp;
+  IPAddress hotspotSubnet;
+  IPAddress hotspotBroadcast;
+  IPAddress dmxInBroadcast;
+  
+  bool dhcpEnable;
+  bool standAloneEnable;
+  bool ethernetEnable;
+  
+  char nodeName[18];
+  char longName[64];
+  char wifiSSID[40];
+  char wifiPass[40];
+  char hotspotSSID[20];
+  char hotspotPass[20];
+  
   uint16_t hotspotDelay;
-  uint8_t portAmode, portBmode, portAprot, portBprot, portAmerge, portBmerge;
-  uint8_t portAnet, portAsub, portAuni[4], portBnet, portBsub, portBuni[4], portAsACNuni[4], portBsACNuni[4];
-  uint16_t portAnumPix, portBnumPix, portApixConfig, portBpixConfig;
+  uint8_t portAmode;
+  uint8_t portBmode; 
+  uint8_t portAprot;
+  uint8_t portBprot;
+  uint8_t portAmerge;
+  uint8_t portBmerge;
+  
+  uint8_t portAnet;
+  uint8_t portAsub;
+  uint8_t portAuni[4];
+  uint8_t portBnet;
+  uint8_t portBsub;
+  uint8_t portBuni[4];
+  uint8_t portAsACNuni[4];
+  uint8_t portBsACNuni[4];
+  
+  uint16_t portAnumPix;
+  uint16_t portBnumPix;
+  uint16_t portApixConfig;
+  uint16_t portBpixConfig;
+
   bool doFirmwareUpdate;
-  uint8_t portApixMode, portBpixMode;
-  uint16_t portApixFXstart, portBpixFXstart;
-  uint8_t resetCounter, wdtCounter;
+  
+  uint8_t portApixMode;
+  uint8_t portBpixMode;
+  
+  uint16_t portApixFXstart;
+  uint16_t portBpixFXstart;
+  
+  uint8_t resetCounter;
+  uint8_t wdtCounter;
+  
 } deviceSettings = {
+
   CONFIG_VERSION,
+
   // The default values
-  IPAddress(2,0,0,1), IPAddress(255,0,0,0), IPAddress(2,0,0,1), IPAddress(2,255,255,255), IPAddress(2,0,0,1), IPAddress(255,0,0,0), IPAddress(2,255,255,255), IPAddress(2,255,255,255),
-  true, false, false,
-  "espArtNetNode", "espArtNetNode by Matthew Tong", "", "", "espArtNetNode", "byMtongnz2017",
-  15,
-//  TYPE_DMX_OUT, TYPE_DMX_OUT, PROT_ARTNET, PROT_ARTNET, MERGE_HTP, MERGE_HTP,
-  TYPE_WS2812, TYPE_WS2812, PROT_ARTNET, PROT_ARTNET, MERGE_HTP, MERGE_HTP,
-  0, 0, {0, 1, 2, 3}, 0, 0, {4, 5, 6, 7}, {1, 2, 3, 4}, {5, 6, 7, 8},
-  24, 24, WS2812_RGB_800KHZ, WS2812_RGB_800KHZ,
-  false,
-  FX_MODE_PIXEL_MAP, FX_MODE_PIXEL_MAP,
-  1, 1,
-  0, 0
+  IPAddress(2,0,0,1),         // ip
+  IPAddress(255,0,0,0),       // subnet
+  IPAddress(2,0,0,1),         // gateway
+  IPAddress(2,255,255,255),   // broadcast
+  IPAddress(2,0,0,1),         // hotspotIP
+  IPAddress(255,0,0,0),       // hotspotSubnet
+  IPAddress(2,255,255,255),   // hotspotBroadcast
+  IPAddress(2,255,255,255),   // dmxInBroadcast
+
+  true,                       // dhcpEnable
+  false,                      // standAloneEnable
+  false,                      // ethernetEnable
+  
+  "espArtNetNode",            // nodeName
+  "espArtNetNode",            // longName
+  "",                         // wifiSSID
+  "",                         // wifiPass
+  "espArtNetNode",            // hotspotSSID
+  "1234567890123",            // hotspotPass
+  15,                         // hotspotDelay
+
+  TYPE_SERIAL_LED,            // portAmode
+  TYPE_SERIAL_LED,            // portBmode
+  PROT_ARTNET,                // portAprot
+  PROT_ARTNET,                // portBprot 
+  MERGE_HTP,                  // portAmerge 
+  MERGE_HTP,                  // portBmerge
+
+  0,                          // portAnet
+  0,                          // portAsub
+  {0, 1, 2, 3},               // portAuni[4]
+  
+  0,                          // portBnet
+  0,                          // portBsub
+  {4, 5, 6, 7},               // portBuni[4]
+
+  {1, 2, 3, 4},               // portAsACNuni[4]
+  {5, 6, 7, 8},               // portBsACNuni[4]
+
+  24,                         // portAnumPix
+  24,                         // portBnumPix
+   
+  WS2812_RGB_800KHZ,          // portApixConfig
+  WS2812_RGB_800KHZ,          // portBpixConfig
+
+  false,                      // doFirmwareUpdate
+  
+  FX_MODE_PIXEL_MAP,          // portApixMode
+  FX_MODE_PIXEL_MAP,          // portBpixMode
+
+  1,                          // portApixFXstart
+  1,                          // portBpixFXstart
+  
+  0,                          // resetCounter
+  0                           // wdtCounter
 };
 
 
 void eepromSave() {
   for (uint16_t t = 0; t < sizeof(deviceSettings); t++) {
-    EEPROM.write(CONFIG_START + t, *((char*)&deviceSettings + t));
+    EEPROM.write(t, *((char*)&deviceSettings + t));
   }
   EEPROM.commit();
 }
@@ -86,9 +173,9 @@ void eepromSave() {
 void eepromLoad() {
   // To make sure there are settings, and they are YOURS!
   // If nothing is found it will use the default settings.
-  if (EEPROM.read(CONFIG_START + 0) == CONFIG_VERSION[0] &&
-      EEPROM.read(CONFIG_START + 1) == CONFIG_VERSION[1] &&
-      EEPROM.read(CONFIG_START + 2) == CONFIG_VERSION[2]) {
+  if (EEPROM.read(0) == CONFIG_VERSION[0] &&
+      EEPROM.read(1) == CONFIG_VERSION[1] &&
+      EEPROM.read(2) == CONFIG_VERSION[2]) {
 
     // Store defaults for if we need them
     StoreStruct tmpStore;
@@ -96,7 +183,7 @@ void eepromLoad() {
     
     // Copy data to deviceSettings structure
     for (uint16_t t = 0; t < sizeof(deviceSettings); t++) {
-      *((char*)&deviceSettings + t) = EEPROM.read(CONFIG_START + t);
+      *((char*)&deviceSettings + t) = EEPROM.read(t);
     }
     
 #if 0
@@ -110,15 +197,9 @@ void eepromLoad() {
     }
 #endif  //#if 0
 
-  // If config files dont match, save defaults then erase the ESP config to clear away any residue
+  // If config files dont match, save defaults
   } else {
     eepromSave();
     delay(500);
-#ifdef ESP32
-    // nop
-#else  // #ifdef ESP32
-    ESP.eraseConfig();
-    while(1);
-#endif  // #ifdef ESP32
   }
 }

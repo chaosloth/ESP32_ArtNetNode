@@ -1,4 +1,8 @@
 /*
+ESP8266_ArtNetNode v3.0.0
+Copyright (c) 2018, Tinic Uro
+https://github.com/tinic/ESP8266_ArtNetNode_v2
+
 ESP8266_ArtNetNode v2.0.0
 Copyright (c) 2016, Matthew Tong
 https://github.com/mtongnz/ESP8266_ArtNetNode_v2
@@ -14,40 +18,41 @@ If not, see http://www.gnu.org/licenses/
 */
 
 
-#ifndef ws2812Driver_h
-#define ws2812Driver_h
+#ifndef serialLEDDriver_h
+#define serialLEDDriver_h
 
-#ifdef ESP32
-#include <WiFi.h>
-#else // #ifdef ESP32
-#include <ESP8266WiFi.h>
-#endif // #ifdef ESP32
+#include <stdint.h>
 
 #define PIX_MAX_BUFFER_SIZE 2040
-
-#define PIX_LATCH_TIME 25       // 25 works for most
-
-#ifdef ESP32
-#define ENABLE_SPI_OUTPUT
-#endif  // #ifdef ESP32
-
-#ifdef ENABLE_SPI_OUTPUT
-#define SPI_RESET_LENGTH_BITS 100
-#endif  // #ifdef ENABLE_SPI_OUTPUT
+#define SPI_LATCH_BITS 100
 
 enum conf_type {
+  // WS2812 use VSPI/HSPI pins only, port 0 and port 1 respectively.
+  // On a ESP32 Wroom module that would be:
+  // WS2812DATA Port 0 => VSPID => GPIO23 => Pin 37
+  // WS2812DATA Port 1 => HSPID => GPIO13 => Pin 16
   WS2812_RGB_800KHZ,
   WS2812_RGB_400KHZ,
   WS2812_RGBW_800KHZ,
-  WS2812_RGBW_400KHZ
+  WS2812_RGBW_400KHZ,
+  // APA102 use VSPI/HSPI pins only, port 0 and port 1 respectively.
+  // On a ESP32 Wroom module that would be:
+  // APA102 Data Port 0 => VSPID => GPIO23 => Pin 37
+  // APA102 Clock Port 0 => VSPID => GPIO18 => Pin 30
+  // APA102 Data Port 1 => HSPID => GPIO13 => Pin 16
+  // APA102 Clock Port 1 => HSPID => GPIO14 => Pin 13
+  APA102_RGBB_800KHZ,
+  APA102_RGBB_400KHZ,
 };
 
-class ws2812Driver {
+class SPIClass;
+
+class serialLEDDriver {
   public:
     
-    ws2812Driver(void);
+    serialLEDDriver(void);
     
-    void setStrip(uint8_t port, uint8_t pin, uint16_t size, uint16_t config);
+    void setStrip(uint8_t port, uint16_t size, uint16_t config);
     void updateStrip(uint8_t port, uint16_t size, uint16_t config);
     
     uint8_t* getBuffer(uint8_t port);
@@ -57,38 +62,35 @@ class ws2812Driver {
     }
     void setBuffer(uint8_t port, uint16_t startChan, uint8_t* data, uint16_t size);
     
-    byte setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0);
-    byte setPixel(uint8_t port, uint16_t pixel, uint32_t colour);
+    uint8_t setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0);
+    uint8_t setPixel(uint8_t port, uint16_t pixel, uint32_t colour);
     uint32_t getPixel(uint8_t port);
     
-    bool show() 
-#ifndef ENABLE_SPI_OUTPUT
-    __attribute__ ((optimize(0)))
-#endif  // #ifndef ENABLE_SPI_OUTPUT
-    ;
+    bool show();
     
     uint16_t numPixels(uint8_t port);
     
-    byte buffer[2][PIX_MAX_BUFFER_SIZE];
+    uint8_t buffer[2][PIX_MAX_BUFFER_SIZE];
 
-#ifdef ENABLE_SPI_OUTPUT
-    uint8_t spi_buffer[2][PIX_MAX_BUFFER_SIZE*8];
-#endif  // #ifdef ENABLE_SPI_OUTPUT
-    
+    void doPixel(uint8_t* data, uint8_t pin, uint16_t numBytes);
+
     bool allowInterruptSingle = true;
     bool allowInterruptDouble = true;
     
-    void doAPA106(byte* data, uint8_t pin, uint16_t numBytes);
-    void doPixel(byte* data, uint8_t pin, uint16_t numBytes);
-    
   private:
-    void doPixelDouble(byte* data1, uint8_t pin1, byte* data2, uint8_t pin2, uint16_t numBytes);
-    
-    uint8_t _pin[2];
+    void setConfig(uint16_t config);
+
+    void doPixel_apa102(uint8_t* data, uint8_t pin, uint16_t numBytes);
+    void doPixel_ws2812(uint8_t* data, uint8_t pin, uint16_t numBytes);
+
+    uint8_t _spi_buffer[PIX_MAX_BUFFER_SIZE*8];
     uint16_t _pixels[2];
     uint16_t _config[2];
-    uint32_t _nextPix = 0;
     uint32_t _pixellen;
+    uint32_t _spi_speed;
+
+    SPIClass *_vspi;
+    SPIClass *_hspi;
 };
 
 #endif

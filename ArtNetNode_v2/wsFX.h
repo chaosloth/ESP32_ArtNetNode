@@ -1,4 +1,8 @@
 /*
+ESP8266_ArtNetNode v3.0.0
+Copyright (c) 2018, Tinic Uro
+https://github.com/tinic/ESP8266_ArtNetNode_v2
+
 ESP8266_ArtNetNode v2.0.0
 Copyright (c) 2016, Matthew Tong
 https://github.com/mtongnz/ESP8266_ArtNetNode_v2
@@ -38,9 +42,9 @@ class pixPatterns {
     bool NewData;
     
     uint8_t Port;                 // port number.
-    ws2812Driver* pixDriver;      // the pixel driver
+    serialLEDDriver* pixDriver;      // the pixel driver
     
-    pixPatterns(uint8_t port, ws2812Driver* p);
+    pixPatterns(uint8_t port, serialLEDDriver* p);
     bool Update(void);
     void Increment(void);
     void setSpeed(uint8_t s);
@@ -61,7 +65,7 @@ class pixPatterns {
     uint8_t Red(uint32_t colour);
     uint8_t Green(uint32_t colour);
     uint8_t Blue(uint32_t colour);
-    uint32_t Wheel(byte WheelPos);
+    uint32_t Wheel(uint8_t WheelPos);
 };
 
 #endif
