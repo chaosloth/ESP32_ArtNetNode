@@ -11,17 +11,10 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see http://www.gnu.org/licenses/
 */
-#include <WiFi.h>
-#include <WiFiUdp.h>
-
 #include "espArtNetRDM.h"
 
-void _artClearDMXBuffer(uint8_t* buf);
-
-void _artClearDMXBuffer(uint8_t* buf) {
+static void artClearDMXBuffer(uint8_t* buf) {
   memset(buf, 0, DMX_BUFFER_SIZE);
-  //for (uint16_t x = 0; x < DMX_BUFFER_SIZE; x++)
-  //  buf[x] = 0;
 }
 
 espArtNetRDM::espArtNetRDM() {
@@ -157,7 +150,7 @@ uint8_t espArtNetRDM::addPort(uint8_t g, uint8_t p, uint8_t universe, uint8_t t,
   }
 
   // Clear the buffer
-  _artClearDMXBuffer(port->dmxBuffer);
+  artClearDMXBuffer(port->dmxBuffer);
 
 
   // Store settings
@@ -649,8 +642,8 @@ void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, u
 
       port->ipBuffer = (uint8_t*) malloc(2 * DMX_BUFFER_SIZE);
       delay(0);
-      _artClearDMXBuffer(port->ipBuffer);
-      _artClearDMXBuffer(&port->ipBuffer[DMX_BUFFER_SIZE]);
+      artClearDMXBuffer(port->ipBuffer);
+      artClearDMXBuffer(&port->ipBuffer[DMX_BUFFER_SIZE]);
       delay(0);
     }
 
@@ -906,7 +899,7 @@ void espArtNetRDM::_artAddress(unsigned char *_artBuffer) {
         }
 
         // Clear the DMX output buffer
-        _artClearDMXBuffer(_art->group[g]->ports[p]->dmxBuffer);
+        artClearDMXBuffer(_art->group[g]->ports[p]->dmxBuffer);
       }
       break;
 
@@ -1369,13 +1362,13 @@ void espArtNetRDM::setE131(uint8_t g, uint8_t p, bool a) {
     e131Count += 1;
 
     // Clear the DMX output buffer
-    _artClearDMXBuffer(_art->group[g]->ports[p]->dmxBuffer);
+    artClearDMXBuffer(_art->group[g]->ports[p]->dmxBuffer);
 
   } else if (_art->group[g]->ports[p]->e131 && !a) {
     e131Count -= 1;
 
     // Clear the DMX output buffer
-    _artClearDMXBuffer(_art->group[g]->ports[p]->dmxBuffer);
+    artClearDMXBuffer(_art->group[g]->ports[p]->dmxBuffer);
   }
 
   _art->group[g]->ports[p]->e131 = a;
@@ -1452,7 +1445,7 @@ void espArtNetRDM::_e131Receive(e131_packet_t* e131Buffer) {
 
         // A higher priority will override previous data - this is handled in saveDMX but we need to clear the IPs & buffer
         if (e131Buffer->priority > group->ports[y]->e131Priority) {
-          _artClearDMXBuffer(group->ports[y]->dmxBuffer);
+          artClearDMXBuffer(group->ports[y]->dmxBuffer);
           group->ports[y]->senderIP[0] = INADDR_NONE;
           group->ports[y]->senderIP[1] = INADDR_NONE;
         }

@@ -14,7 +14,6 @@
 #ifndef e131_data_h
 #define e131_data_h
 
-
 #define E131_PORT 5568
 #define E131_BUFFER_MAX 638
 

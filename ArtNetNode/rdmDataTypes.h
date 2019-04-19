@@ -1,4 +1,3 @@
-
 /*
   espArtNetRDM v1 (pre-release) library
   Copyright (c) 2016, Matthew Tong
@@ -14,6 +13,9 @@
 */
 #ifndef rdmDataTypes_h
 #define rdmDataTypes_h
+
+#include <stdint.h>
+#include <string.h>
 
 enum rdm_tod_state {
   RDM_TOD_NOT_READY,
@@ -46,7 +48,7 @@ union rdm_data_ {
     uint8_t maskedChecksum[4];
   } __attribute__((packed)) discovery;
 
-  byte buffer[255];
+  uint8_t buffer[255];
 
   void endianFlip(void) {
     // 16 bit flips

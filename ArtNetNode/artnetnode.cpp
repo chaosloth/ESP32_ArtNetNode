@@ -18,6 +18,11 @@
 */
 #include <Arduino.h>
 
+#include "serialLEDDriver.h"
+#include "wsFX.h"
+#include "espDMX_RDM.h"
+#include "espArtNetRDM.h"
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
@@ -33,11 +38,6 @@
 
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
-
-#include "serialLEDDriver.h"
-#include "wsFX.h"
-#include "espDMX_RDM.h"
-#include "espArtNetRDM.h"
 
 #define FIRMWARE_VERSION "3.0.0"
 #define ART_FIRM_VERSION 0x0210   // Firmware given over Artnet (2 uint8_ts)

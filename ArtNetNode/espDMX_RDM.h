@@ -30,16 +30,6 @@
 #define RDM_DISCOVERY_FULL        1
 #define RDM_DISCOVERY_TOD_WIPE    2
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-
-#include <Arduino.h>
-
-#include <inttypes.h>
-#include "Stream.h"
-
 #include "rdm.h"
 #include "rdmDataTypes.h"
 #include "rdmFIFO.h"
