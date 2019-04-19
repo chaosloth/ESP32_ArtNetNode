@@ -65,6 +65,10 @@ union rdm_data_ {
     packet.DestDev = __builtin_bswap32 (packet.DestDev);
     packet.SourceDev = __builtin_bswap32 (packet.SourceDev);
   }
+
+   void clear(void) {
+     memset(&buffer, 0, 255);
+   }
 };
 typedef union rdm_data_ rdm_data;
 
