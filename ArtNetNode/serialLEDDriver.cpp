@@ -1,7 +1,7 @@
 /*
   ArtNetNode v3.0.0
   Copyright (c) 2018, Tinic Uro
-  https://github.com/tinic/ESP8266_ArtNetNode_v2
+  https://github.com/tinic/ESP32_ArtNetNode
 
   ESP8266_ArtNetNode v2.0.0
   Copyright (c) 2016, Matthew Tong
