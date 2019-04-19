@@ -48,7 +48,7 @@ struct StoreStruct {
 
   // Device settings:
   IPAddress ip, subnet, gateway, broadcast, hotspotIp, hotspotSubnet, hotspotBroadcast, dmxInBroadcast;
-  bool dhcpEnable, standAloneEnable;
+  bool dhcpEnable, standAloneEnable, ethernetEnable;
   char nodeName[18], longName[64], wifiSSID[40], wifiPass[40], hotspotSSID[20], hotspotPass[20];
   uint16_t hotspotDelay;
   uint8_t portAmode, portBmode, portAprot, portBprot, portAmerge, portBmerge;
@@ -62,7 +62,7 @@ struct StoreStruct {
   CONFIG_VERSION,
   // The default values
   IPAddress(2,0,0,1), IPAddress(255,0,0,0), IPAddress(2,0,0,1), IPAddress(2,255,255,255), IPAddress(2,0,0,1), IPAddress(255,0,0,0), IPAddress(2,255,255,255), IPAddress(2,255,255,255),
-  true, false,
+  true, false, false,
   "espArtNetNode", "espArtNetNode by Matthew Tong", "", "", "espArtNetNode", "byMtongnz2017",
   15,
 //  TYPE_DMX_OUT, TYPE_DMX_OUT, PROT_ARTNET, PROT_ARTNET, MERGE_HTP, MERGE_HTP,
