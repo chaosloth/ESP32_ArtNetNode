@@ -1,5 +1,5 @@
 /*
-ESP8266_ArtNetNode v3.0.0
+ArtNetNode v3.0.0
 Copyright (c) 2018, Tinic Uro
 https://github.com/tinic/ESP8266_ArtNetNode_v2
 

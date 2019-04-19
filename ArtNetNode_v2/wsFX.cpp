@@ -1,5 +1,5 @@
 /*
-ESP8266_ArtNetNode v3.0.0
+ArtNetNode v3.0.0
 Copyright (c) 2018, Tinic Uro
 https://github.com/tinic/ESP8266_ArtNetNode_v2
 
@@ -19,6 +19,8 @@ If not, see http://www.gnu.org/licenses/
 #include <Arduino.h>
 
 #include "wsFX.h"
+
+#include "serialLEDDriver.h"
 
 pixPatterns::pixPatterns(uint8_t port, serialLEDDriver* p) {
   pixDriver = p;

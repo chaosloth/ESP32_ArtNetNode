@@ -1,5 +1,5 @@
 /*
-ESP8266_ArtNetNode v3.0.0
+ArtNetNode v3.0.0
 Copyright (c) 2018, Tinic Uro
 https://github.com/tinic/ESP8266_ArtNetNode_v2
 
@@ -16,14 +16,12 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.
 If not, see http://www.gnu.org/licenses/
 */
-
-
-#ifndef WS_FX
-#define WS_FX
-
-#include "ws2812Driver.h"
+#ifndef wsFX_h
+#define wsFX_h
 
 enum  pattern { STATIC, RAINBOW_CYCLE, THEATER_CHASE, TWINKLE };
+
+class serialLEDDriver;
 
 class pixPatterns {
   public:
@@ -68,4 +66,4 @@ class pixPatterns {
     uint32_t Wheel(uint8_t WheelPos);
 };
 
-#endif
+#endif  // #ifndef wsFX_h

@@ -1,5 +1,5 @@
 /*
-ESP8266_ArtNetNode v3.0.0
+ArtNetNode v3.0.0
 Copyright (c) 2018, Tinic Uro
 https://github.com/tinic/ESP8266_ArtNetNode_v2
 
@@ -19,7 +19,7 @@ If not, see http://www.gnu.org/licenses/
 #include <Arduino.h>
 #include <SPI.h>
 
-#include "ws2812Driver.h"
+#include "serialLEDDriver.h"
 
 // Timings from here:
 // https://wp.josh.com/2014/05/13/ws2812-neopixels-are-not-so-finicky-once-you-get-to-know-them/
