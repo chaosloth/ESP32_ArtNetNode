@@ -1,4 +1,3 @@
-
 /*
 espArtNetRDM v1 (pre-release) library
 Copyright (c) 2016, Matthew Tong
@@ -17,9 +16,9 @@ If not, see http://www.gnu.org/licenses/
 
 #include "espArtNetRDM.h"
 
-void _artClearDMXBuffer(byte* buf);
+void _artClearDMXBuffer(uint8_t* buf);
 
-void _artClearDMXBuffer(byte* buf) {
+void _artClearDMXBuffer(uint8_t* buf) {
   memset(buf, 0, DMX_BUFFER_SIZE);
   //for (uint16_t x = 0; x < DMX_BUFFER_SIZE; x++)
   //  buf[x] = 0;
@@ -72,10 +71,10 @@ void espArtNetRDM::init(IPAddress ip, IPAddress subnet, bool dhcp, char* shortna
   _art->subnet = ip;
   _art->broadcastIP = IPAddress((uint32_t)ip | ~((uint32_t)subnet));
   _art->dhcp = dhcp;
-  _art->oemLo = (byte)oem;
-  _art->oemHi = (byte)(oem >> 8);
-  _art->estaLo = (byte)esta;
-  _art->estaHi = (byte)(esta >> 8);
+  _art->oemLo = (uint8_t)oem;
+  _art->oemHi = (uint8_t)(oem >> 8);
+  _art->estaLo = (uint8_t)esta;
+  _art->estaHi = (uint8_t)(esta >> 8);
   _art->syncIP = INADDR_NONE;
   _art->lastSync = 0;
   _art->nextPollReply = 0;
@@ -99,14 +98,14 @@ void espArtNetRDM::setDefaultIP() {
   _art->subnet = IPAddress(255, 0, 0, 0);
   _art->broadcastIP = IPAddress(2, 255, 255, 255);
 
-  byte b = _art->deviceMAC[3] + _art->oemLo + _art->oemHi;
-  byte c = _art->deviceMAC[4];
-  byte d = _art->deviceMAC[5];
+  uint8_t b = _art->deviceMAC[3] + _art->oemLo + _art->oemHi;
+  uint8_t c = _art->deviceMAC[4];
+  uint8_t d = _art->deviceMAC[5];
 
   _art->deviceIP = IPAddress(2, b, c, d);
 }
 
-uint8_t espArtNetRDM::addGroup(byte net, byte subnet) {
+uint8_t espArtNetRDM::addGroup(uint8_t net, uint8_t subnet) {
   if (_art == 0)
     return 255;
 
@@ -128,7 +127,7 @@ uint8_t espArtNetRDM::addGroup(byte net, byte subnet) {
   return g;
 }
 
-uint8_t espArtNetRDM::addPort(byte g, byte p, byte universe, uint8_t t, bool htp, byte* buf) {
+uint8_t espArtNetRDM::addPort(uint8_t g, uint8_t p, uint8_t universe, uint8_t t, bool htp, uint8_t* buf) {
   if (_art == 0)
     return 255;
 
@@ -150,7 +149,7 @@ uint8_t espArtNetRDM::addPort(byte g, byte p, byte universe, uint8_t t, bool htp
   
   // DMX output buffer allocation
   if (buf == 0) {
-    port->dmxBuffer = (byte*) malloc(DMX_BUFFER_SIZE);
+    port->dmxBuffer = (uint8_t*) malloc(DMX_BUFFER_SIZE);
     port->ownBuffer = true;
   } else {
     port->dmxBuffer = buf;
@@ -362,8 +361,8 @@ void espArtNetRDM::handler() {
 int espArtNetRDM::_artOpCode(unsigned char *_artBuffer) {
   String test = String((char*)_artBuffer);
   if ( test.equals("Art-Net") ) {
-    if ( _artBuffer[11] >= 14 ) {                 //protocol version [10] hi byte [11] lo byte
-      return _artBuffer[9] *256 + _artBuffer[8];  //opcode lo byte first
+    if ( _artBuffer[11] >= 14 ) {                 //protocol version [10] hi uint8_t [11] lo uint8_t
+      return _artBuffer[9] *256 + _artBuffer[8];  //opcode lo uint8_t first
     }
   }
   
@@ -401,7 +400,7 @@ void espArtNetRDM::_artPoll() {
   _artReplyBuffer[22] = 0;              		// ubea
 	
   _artReplyBuffer[23] = 0b11110010;			// Device is RDM Capable
-  _artReplyBuffer[24] = _art->estaLo;           	// ESTA Code (2 bytes)
+  _artReplyBuffer[24] = _art->estaLo;           	// ESTA Code (2 uint8_ts)
   _artReplyBuffer[25] = _art->estaHi;
 
                                         //short name
@@ -481,7 +480,7 @@ void espArtNetRDM::_artPoll() {
 
     _artReplyBuffer[18] = group->netSwitch;       // net
     _artReplyBuffer[19] = group->subnet;          // subnet
-    _artReplyBuffer[173] = group->numPorts;       //number of ports (Lo byte)
+    _artReplyBuffer[173] = group->numPorts;       //number of ports (Lo uint8_t)
 
     _artReplyBuffer[211] = groupNum+1;    	  // Bind Index
 
@@ -503,7 +502,7 @@ void espArtNetRDM::_artPoll() {
       if (group->ports[x]->portType != DMX_IN) {
 
         // Get values for Good Output field
-        byte go = 0;
+        uint8_t go = 0;
         if (group->ports[x]->dmxChans != 0)
           go |= 128;						// data being transmitted
         if (group->ports[x]->merging)
@@ -555,7 +554,7 @@ void espArtNetRDM::_artDMX(unsigned char *_artBuffer) {
   uint8_t sub = (_artBuffer[14] >> 4);
   uint8_t uni = (_artBuffer[14] & 0x0F);
 
-  // Number of channels hi byte first
+  // Number of channels hi uint8_t first
   uint16_t numberOfChannels = _artBuffer[17] + (_artBuffer[16] << 8);
   uint16_t startChannel = 0;
 
@@ -648,7 +647,7 @@ void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, u
     // Check if there is a buffer.  If not, allocate and clear it
     if (port->ipBuffer == 0) {
       
-      port->ipBuffer = (byte*) malloc(2 * DMX_BUFFER_SIZE);
+      port->ipBuffer = (uint8_t*) malloc(2 * DMX_BUFFER_SIZE);
       delay(0);
       _artClearDMXBuffer(port->ipBuffer);
       _artClearDMXBuffer(&port->ipBuffer[DMX_BUFFER_SIZE]);
@@ -690,7 +689,7 @@ void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, u
   }
 }
 
-byte* espArtNetRDM::getDMX(uint8_t g, uint8_t p) {
+uint8_t* espArtNetRDM::getDMX(uint8_t g, uint8_t p) {
   if (_art == 0)
     return NULL;
 
@@ -718,7 +717,7 @@ void espArtNetRDM::_artIPProg(unsigned char *_artBuffer) {
     return;
   _art->lastIPProg = millis();
   
-  byte command = _artBuffer[14];
+  uint8_t command = _artBuffer[14];
 
   // Enable DHCP
   if ((command & 0b11000000) == 0b11000000) {
@@ -956,7 +955,7 @@ void espArtNetRDM::_artFirmwareMaster(unsigned char *_artBuffer) {
 }
 
 void espArtNetRDM::_artTODRequest(unsigned char *_artBuffer) {
-  byte net = _artBuffer[21];
+  uint8_t net = _artBuffer[21];
   group_def* group;
 
   uint8_t numAddress = _artBuffer[23];
@@ -1092,9 +1091,9 @@ void espArtNetRDM::_artRDM(unsigned char *_artBuffer, uint16_t packetSize) {
 
   IPAddress remoteIp = eUDP.remoteIP();
 
-  byte net = _artBuffer[21] * 0x7F;
-  byte sub = _artBuffer[23] >> 4;
-  byte uni = _artBuffer[23] & 0x0F;
+  uint8_t net = _artBuffer[21] * 0x7F;
+  uint8_t sub = _artBuffer[23] >> 4;
+  uint8_t uni = _artBuffer[23] & 0x0F;
 
   // Get RDM data into out buffer ready to send
   rdm_data c;
@@ -1242,7 +1241,7 @@ void espArtNetRDM::setSubNet(uint8_t g, uint8_t sub) {
   _art->group[g]->subnet = sub;
 }
 
-byte espArtNetRDM::getSubNet(uint8_t g) {
+uint8_t espArtNetRDM::getSubNet(uint8_t g) {
   if (_art == 0 || g >= _art->numGroups)
     return 0;
   return _art->group[g]->subnet;
@@ -1254,7 +1253,7 @@ void espArtNetRDM::setUni(uint8_t g, uint8_t p, uint8_t uni) {
   _art->group[g]->ports[p]->portUni = uni;
 }
 
-byte espArtNetRDM::getUni(uint8_t g, uint8_t p) {
+uint8_t espArtNetRDM::getUni(uint8_t g, uint8_t p) {
   if (_art == 0 || g >= _art->numGroups || _art->group[g]->ports[p] == 0)
     return 0;
   return _art->group[g]->ports[p]->portUni;
@@ -1470,8 +1469,3 @@ void espArtNetRDM::_e131Receive(e131_packet_t* e131Buffer) {
   }
 
 }
-
-
-
-
-

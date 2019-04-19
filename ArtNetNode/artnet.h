@@ -12,9 +12,6 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.
 If not, see http://www.gnu.org/licenses/
 */
-
-
-
 #ifndef artnet_data_h
 #define artnet_data_h
 

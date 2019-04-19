@@ -13,11 +13,10 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.
 If not, see http://www.gnu.org/licenses/
 */
-
 #ifndef espDMX_h
 #define espDMX_h
 
-#define DMX_MAX_BYTES_PER_INT 3		// How many bytes to send per interrupt
+#define DMX_MAX_BYTES_PER_INT 3		// How many uint8_ts to send per interrupt
 #define DMX_TX_CONF           0x3c   	// SERIAL_8N2
 #define DMX_TX_BAUD           250000
 #define DMX_FULL_UNI_TIMING   800   	// How often to output full 512 channel universe (in milliseconds)
@@ -63,8 +62,8 @@ enum dmx_state {
   DMX_RX_IDLE
 };
 
-union byte_uint64 {
-  byte b[8];
+union uint8_t_uint64 {
+  uint8_t b[8];
   uint64_t u;
 };
 
@@ -86,8 +85,8 @@ struct dmx_ {
     bool newDMX = false;
     bool started = false;
 
-    byte* data;
-    byte* data1;
+    uint8_t* data;
+    uint8_t* data1;
     bool ownBuffer = 0;
 
     bool isInput = false;
@@ -119,18 +118,18 @@ class espDMX {
         espDMX(uint8_t dmx_nr);
         ~espDMX();
 
-  	void begin(uint8_t dir, byte* buf);
+  	void begin(uint8_t dir, uint8_t* buf);
 	void begin(uint8_t dir) {
       		begin(dir, NULL);
   	};
-	void begin(byte* buf) {
+	void begin(uint8_t* buf) {
       		begin(255, buf);
   	};
 	void begin(void) {
       		begin(255, NULL);
   	};
 
-	void setBuffer(byte*);
+	void setBuffer(uint8_t*);
 	void setBuffer(void) {
 		setBuffer(NULL);
 	};
@@ -139,18 +138,18 @@ class espDMX {
         void end();
         void ledIntensity(uint8_t);
         
-        void setChans(byte *data) {
+        void setChans(uint8_t *data) {
             setChans(data, 512, 1);
         }
-        void setChans(byte *data, uint16_t numChans) {
+        void setChans(uint8_t *data, uint16_t numChans) {
             setChans(data, numChans, 1);
         }
-        void setChans(byte*, uint16_t, uint16_t);
+        void setChans(uint8_t*, uint16_t, uint16_t);
 
 
   	void chanUpdate(uint16_t);
         void clearChans();
-        byte *getChans();
+        uint8_t *getChans();
         uint16_t numChans();
         
 /*  from stream class
@@ -173,8 +172,8 @@ class espDMX {
         void todSetCallBack(void (*todCallBackFunc)(void));
         
         bool rdmSendCommand(rdm_data*);
-        bool rdmSendCommand(uint8_t, uint16_t, uint16_t, uint32_t, byte*, uint16_t, uint16_t);
-        bool rdmSendCommand(uint8_t cmdClass, uint16_t pid, uint16_t manID, uint32_t devID, byte* data, uint16_t dataLength) {
+        bool rdmSendCommand(uint8_t, uint16_t, uint16_t, uint32_t, uint8_t*, uint16_t, uint16_t);
+        bool rdmSendCommand(uint8_t cmdClass, uint16_t pid, uint16_t manID, uint32_t devID, uint8_t* data, uint16_t dataLength) {
           return rdmSendCommand(cmdClass, pid, manID, devID, data, dataLength, 0);
         };
         bool rdmSendCommand(uint8_t cmdClass, uint16_t pid, uint16_t manID, uint32_t devID) {
@@ -231,4 +230,3 @@ extern espDMX dmxA;
 extern espDMX dmxB;
 extern void rdmPause(bool);
 #endif
-

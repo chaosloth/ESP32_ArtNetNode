@@ -1,4 +1,3 @@
-
 /*
 espArtNetRDM v1 (pre-release) library
 Copyright (c) 2016, Matthew Tong
@@ -12,9 +11,6 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.
 If not, see http://www.gnu.org/licenses/
 */
-
-
-
 #ifndef espArtNetRDM_h
 #define espArtNetRDM_h
 
@@ -50,17 +46,17 @@ struct _port_def {
   uint8_t e131Priority;
 
   // Port universe
-  byte portUni;
+  uint8_t portUni;
   
   // DMX final values buffer
-  byte* dmxBuffer;
+  uint8_t* dmxBuffer;
   uint16_t dmxChans;
   bool ownBuffer;
   bool mergeHTP;
   bool merging;
 
   // ArtDMX input buffers for 2 IPs
-  byte* ipBuffer;
+  uint8_t* ipBuffer;
   uint16_t ipChans[2];
 
   // IPs for current data + time of last packet
@@ -83,11 +79,11 @@ typedef struct _port_def port_def;
 
 struct _group_def {
   // Port Address
-  byte netSwitch = 0x00;
-  byte subnet = 0x00;
+  uint8_t netSwitch = 0x00;
+  uint8_t subnet = 0x00;
   
   port_def* ports[4] = {0,0,0,0};
-  byte numPorts = 0;
+  uint8_t numPorts = 0;
 
   IPAddress cancelMergeIP;
   bool cancelMerge;
@@ -113,10 +109,10 @@ struct _artnet_def {
   char shortName[ARTNET_SHORT_NAME_LENGTH];
   char longName[ARTNET_LONG_NAME_LENGTH];
 
-  byte oemHi;
-  byte oemLo;
-  byte estaHi;
-  byte estaLo;
+  uint8_t oemHi;
+  uint8_t oemLo;
+  uint8_t estaHi;
+  uint8_t estaLo;
 
   group_def* group[16];
   uint8_t numGroups;
@@ -166,16 +162,16 @@ class espArtNetRDM {
     void setFirmwareVersion(uint16_t);
     void setDefaultIP();
 
-    uint8_t addGroup(byte, byte);
+    uint8_t addGroup(uint8_t, uint8_t);
 
-    uint8_t addPort(byte, byte, byte, uint8_t, bool, byte*);
-    uint8_t addPort(byte group, byte port, byte universe, uint8_t type, bool htp) {
+    uint8_t addPort(uint8_t, uint8_t, uint8_t, uint8_t, bool, uint8_t*);
+    uint8_t addPort(uint8_t group, uint8_t port, uint8_t universe, uint8_t type, bool htp) {
       return addPort(group, port, universe, type, htp, 0);
     };
-    uint8_t addPort(byte group, byte port, byte universe, uint8_t type) {
+    uint8_t addPort(uint8_t group, uint8_t port, uint8_t universe, uint8_t type) {
       return addPort(group, port, universe, type, true, 0);
     };
-    uint8_t addPort(byte group, byte port, byte universe) {
+    uint8_t addPort(uint8_t group, uint8_t port, uint8_t universe) {
       return addPort(group, port, universe, DMX_OUT, true, 0);
     };
 
@@ -183,7 +179,7 @@ class espArtNetRDM {
     void begin();
     void end();
     void pause();
-    byte* getDMX(uint8_t, uint8_t);
+    uint8_t* getDMX(uint8_t, uint8_t);
     uint16_t numChans(uint8_t, uint8_t);
 
     // sACN functions
@@ -210,9 +206,9 @@ class espArtNetRDM {
     void setPortType(uint8_t, uint8_t, uint8_t);
 
     // get ArtNet uni settings
-    byte getNet(uint8_t);
-    byte getSubNet(uint8_t);
-    byte getUni(uint8_t, uint8_t);
+    uint8_t getNet(uint8_t);
+    uint8_t getSubNet(uint8_t);
+    uint8_t getUni(uint8_t, uint8_t);
 
     // set network settings
     void setIP(IPAddress, IPAddress);

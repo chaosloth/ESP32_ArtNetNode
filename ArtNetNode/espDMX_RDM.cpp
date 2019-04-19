@@ -13,7 +13,6 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.
 If not, see http://www.gnu.org/licenses/
 */
-
 #include "espDMX_RDM.h"
 
 #include "soc/uart_reg.h"
@@ -49,7 +48,7 @@ void rx_flush();
 void dmx_flush(dmx_t* dmx);
 static void uart_ignore_char(char c);
 
-void dmx_set_buffer(dmx_t* dmx, byte* buf);
+void dmx_set_buffer(dmx_t* dmx, uint8_t* buf);
 
 void dmx_uninit(dmx_t* dmx);
 
@@ -256,7 +255,7 @@ void dmx_clear_buffer(dmx_t* dmx) {
   dmx->numChans = DMX_MIN_CHANS;
 }
 
-void dmx_set_buffer(dmx_t* dmx, byte* buf) {
+void dmx_set_buffer(dmx_t* dmx, uint8_t* buf) {
   if(dmx == 0 || dmx->state == DMX_NOT_INIT)
     return;
 
@@ -264,7 +263,7 @@ void dmx_set_buffer(dmx_t* dmx, byte* buf) {
     free(dmx->data);
 
   if (buf == NULL) {
-    buf = (byte*) malloc(sizeof(byte) * 512);
+    buf = (uint8_t*) malloc(sizeof(uint8_t) * 512);
 
     if(!buf) {
       free(buf);
@@ -395,7 +394,7 @@ espDMX::~espDMX(void) {
   end();
 }
 
-void espDMX::begin(uint8_t dir, byte* buf) {
+void espDMX::begin(uint8_t dir, uint8_t* buf) {
   if(_dmx == 0) {
     _dmx = (dmx_t*) malloc(sizeof(dmx_t));
     
@@ -405,7 +404,7 @@ void espDMX::begin(uint8_t dir, byte* buf) {
       return;
     }
 
-    _dmx->data1 = (byte*) malloc(sizeof(byte) * 512);
+    _dmx->data1 = (uint8_t*) malloc(sizeof(uint8_t) * 512);
     memset(_dmx->data1, 0, 512);
 
     _dmx->ownBuffer = 0;
@@ -449,7 +448,7 @@ void espDMX::begin(uint8_t dir, byte* buf) {
   }
 }
 
-void espDMX::setBuffer(byte* buf) {
+void espDMX::setBuffer(uint8_t* buf) {
   dmx_set_buffer(_dmx, buf);
 }
 
@@ -484,7 +483,7 @@ void espDMX::end() {
   _dmx = 0;
 }
 
-void espDMX::setChans(byte *data, uint16_t numChans, uint16_t startChan) {
+void espDMX::setChans(uint8_t *data, uint16_t numChans, uint16_t startChan) {
   dmx_set_chans(_dmx, data, numChans, startChan);
 }
 
@@ -499,7 +498,7 @@ void espDMX::clearChans() {
   dmx_clear_buffer(_dmx);
 }
 
-byte *espDMX::getChans() {
+uint8_t *espDMX::getChans() {
   if(_dmx == 0 || _dmx->state == DMX_NOT_INIT)
     return 0;
 
@@ -524,7 +523,7 @@ void ICACHE_RAM_ATTR espDMX::_transmit(void) {
   // If we have data to transmit
   if (_dmx->txChan < _dmx->txSize) {
     
-    // Keep the number of bytes sent low to keep it quick
+    // Keep the number of uint8_ts sent low to keep it quick
 //    uint16_t txSize = dmx->txSize - dmx->txChan;
 //    txSize = (txSize > DMX_MAX_BYTES_PER_INT) ? DMX_MAX_BYTES_PER_INT : txSize;      
 
@@ -533,7 +532,7 @@ void ICACHE_RAM_ATTR espDMX::_transmit(void) {
 
 //    dmx_interrupt_arm(dmx);
 
-  // If all bytes are transmitted
+  // If all uint8_ts are transmitted
   } else {
 
     //dmx_interrupt_disarm(_dmx);
@@ -558,9 +557,9 @@ bool espDMX::rdmSendCommand(rdm_data* data) {
   if (system_get_free_heap_size() < 2000)
     return false;
 
-  byte packetLength = data->packet.Length;
+  uint8_t packetLength = data->packet.Length;
   uint16_t checkSum = 0x0000;
-  for (byte x = 0; x < packetLength; x++) {
+  for (uint8_t x = 0; x < packetLength; x++) {
     checkSum += data->buffer[x];
   }
   checkSum = checkSum % 0x10000;
@@ -573,14 +572,14 @@ bool espDMX::rdmSendCommand(rdm_data* data) {
   return r;
 }
         
-bool espDMX::rdmSendCommand(uint8_t cmdClass, uint16_t pid, uint16_t manID, uint32_t devID, byte* data, uint16_t dataLength, uint16_t subDev) {
+bool espDMX::rdmSendCommand(uint8_t cmdClass, uint16_t pid, uint16_t manID, uint32_t devID, uint8_t* data, uint16_t dataLength, uint16_t subDev) {
   if (_dmx == 0 || !_dmx->rdm_enable)
     return false;
 
   rdm_data command;
 
   // Note that all ints are stored little endian so we need to flip them
-  // to get correct byte order
+  // to get correct uint8_t order
   
   command.packet.StartCode = (E120_SC_RDM << 8) | E120_SC_SUB_MESSAGE;
   command.packet.Length = 24 + dataLength;
@@ -639,7 +638,7 @@ void espDMX::rdmDiscovery(uint8_t discType) {
     discType = RDM_DISCOVERY_FULL;
   }
 
-  byte startEnd[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  uint8_t startEnd[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     
   if (discType == RDM_DISCOVERY_FULL) {
     _dmx->tod_changed = true;
@@ -660,7 +659,7 @@ void espDMX::rdmDiscovery(uint8_t discType) {
 void espDMX::rdmDiscoveryResponse(rdm_data* c) {
   // If we received nothing, branch is empty
   if (_dmx->rx_pos == 0) {
-    byte a[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t a[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     
     // If it's a reply to the top branch, all devices are found
     if (memcmp(c->packet.Data, a, 12) == 0) {
@@ -686,8 +685,8 @@ void espDMX::rdmDiscoveryResponse(rdm_data* c) {
   if (_dmx->rdm_response.discovery.headerFE == 0xFE && _dmx->rdm_response.discovery.headerAA == 0xAA) {
     uint16_t _manID;
     uint32_t _devID;
-    byte* maskedDevID = _dmx->rdm_response.discovery.maskedDevID;
-    byte* maskedChkSm = _dmx->rdm_response.discovery.maskedChecksum;
+    uint8_t* maskedDevID = _dmx->rdm_response.discovery.maskedDevID;
+    uint8_t* maskedChkSm = _dmx->rdm_response.discovery.maskedChecksum;
 
     _manID = (maskedDevID[0] & maskedDevID[1]);
     _manID = (_manID << 8)  + (maskedDevID[2] & maskedDevID[3]);
@@ -1124,7 +1123,7 @@ void ICACHE_RAM_ATTR espDMX::inputBreak(void) {
   _dmx->state = DMX_RX_BREAK;
 
   // Double buffer switch
-  byte* tmp = _dmx->data;
+  uint8_t* tmp = _dmx->data;
   _dmx->data = _dmx->data1;
   _dmx->data1 = _dmx->data;
 
@@ -1164,7 +1163,7 @@ void espDMX::handler() {
         rx_flush();
 
         rdm_data* c = _dmx->rdm_queue.peek();
-        _dmx->txSize = c->buffer[2] + 3;	// Extra byte added so we don't need a delay in the interrupt
+        _dmx->txSize = c->buffer[2] + 3;	// Extra uint8_t added so we don't need a delay in the interrupt
 
         memcpy(_dmx->data1, c->buffer, _dmx->txSize-1);
 

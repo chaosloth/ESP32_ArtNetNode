@@ -40,7 +40,7 @@ If not, see http://www.gnu.org/licenses/
 #include "espArtNetRDM.h"
 
 #define FIRMWARE_VERSION "3.0.0"
-#define ART_FIRM_VERSION 0x0210   // Firmware given over Artnet (2 bytes)
+#define ART_FIRM_VERSION 0x0210   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123    // Artnet OEM Code
 #define ESTA_MAN 0x555F      // ESTA Manufacturer Code
@@ -100,7 +100,7 @@ static uint32_t nodeErrorTimeout = 0;
 static bool pixDone = true;
 static bool newDmxIn = false;
 static bool doReboot = false;
-static byte* dataIn = 0;
+static uint8_t* dataIn = 0;
 
 static void wifiStart();
 static void webStart();
@@ -473,7 +473,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
 
       // FX 12 Mode
       } else if (port == portA[1]) {
-        byte* a = artRDM.getDMX(group, port);
+        uint8_t* a = artRDM.getDMX(group, port);
         uint16_t s = deviceSettings.portApixFXstart - 1;
         
         pixFXA.Intensity = a[s + 0];
@@ -517,7 +517,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
 
       // FX 12 mode
       } else if (port == portB[1]) {
-        byte* a = artRDM.getDMX(group, port);
+        uint8_t* a = artRDM.getDMX(group, port);
         uint16_t s = deviceSettings.portBpixFXstart - 1;
         
         pixFXB.Intensity = a[s + 0];
@@ -669,7 +669,7 @@ static void todFlush(uint8_t group, uint8_t port) {
 
 static void dmxIn(uint16_t num) {
   // Double buffer switch
-  byte* tmp = dataIn;
+  uint8_t* tmp = dataIn;
   dataIn = dmxA.getChans();
   dmxA.setBuffer(tmp);
   
@@ -1428,7 +1428,7 @@ static void portSetup() {
     dmxA.dmxIn(true);
     dmxA.setInputCallback(dmxIn);
 
-    dataIn = (byte*) malloc(sizeof(byte) * 512);
+    dataIn = (uint8_t*) malloc(sizeof(uint8_t) * 512);
     memset(dataIn, 0, 512);
 
   } else if (deviceSettings.portAmode == TYPE_SERIAL_LED) {
