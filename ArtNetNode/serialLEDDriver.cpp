@@ -104,14 +104,19 @@ void serialLEDDriver::clearBuffer(uint8_t port, uint16_t start) {
 void serialLEDDriver::setBuffer(uint8_t port, uint16_t startChan, uint8_t* data, uint16_t size) {
   uint8_t* a = buffer[port];
 
-  memcpy(&a[startChan], data, size);
+  uint8_t *dst = &a[startChan];
+  memcpy(dst, data, size);
+  for (size_t c=0; c<size; c+=_pixellen) {
+    uint8_t tmp = dst[c+0];
+    dst[c+0] = dst[c+1];
+    dst[c+1] = tmp;
+  }
 }
 
 uint8_t serialLEDDriver::setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
   uint8_t* a = buffer[port];
 
   uint16_t chan = pixel * _pixellen;
-  // ws2812 is GRB ordering
   a[chan + 1] = r;
   a[chan + 0] = g;
   a[chan + 2] = b;
