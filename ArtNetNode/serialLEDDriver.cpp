@@ -44,7 +44,7 @@ void serialLEDDriver::setConfig(uint16_t config) {
       _spi_speed = 400000 * 8;
       break;
     case WS2812_RGB_800KHZ:
-      _pixellen = 4;
+      _pixellen = 3;
       _spi_speed = 800000 * 8;
       break;
     default:
@@ -118,7 +118,7 @@ uint8_t serialLEDDriver::setPixel(uint8_t port, uint16_t pixel, uint8_t r, uint8
   uint16_t chan = pixel * _pixellen;
   // ws2812 is GRB ordering
   a[chan + 1] = r;
-  a[chan] = g;
+  a[chan + 0] = g;
   a[chan + 2] = b;
   if (_pixellen > 3) {
     a[chan + 3] = w;
