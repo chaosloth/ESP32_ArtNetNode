@@ -29,8 +29,8 @@ serialLEDDriver::serialLEDDriver() {
   _pixels[1] = 0;
   _pixellen = 3;
   _spi_speed = 400000 * 8;
-  _vspi = 0;
-  _hspi = 0;
+  _vspi.begin();
+  _hspi.begin();
 }
 
 void serialLEDDriver::setConfig(uint16_t config) {
@@ -61,11 +61,6 @@ void serialLEDDriver::setConfig(uint16_t config) {
       _spi_speed = 400000 * 8;
       break;
   }
-
-  delete _vspi;
-  _vspi = nullptr;
-  delete _hspi;
-  _vspi = nullptr;
 }
 
 void serialLEDDriver::setStrip(uint8_t port, uint16_t size, uint16_t config) {
@@ -181,11 +176,6 @@ void serialLEDDriver::doPixel(uint8_t* data, uint8_t port, uint16_t numBytes) {
 void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBytes) {
 
   if (port == 0) {
-    if (!_vspi) {
-      _vspi = new SPIClass(VSPI);
-      _vspi->begin(-1, -1, -1, -1);
-    }
-
     // Convert to SPI data
     uint8_t *dst = &_spi_buffer[0];
     for (int32_t c = 0; c < _pixels[0]; c += 4) {
@@ -199,31 +189,26 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
       *dst ++ = p1;
     }
 
-    _vspi->beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
+    _vspi.beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
 
-    _vspi->write(0);
-    _vspi->write(0);
-    _vspi->write(0);
-    _vspi->write(0);
+    _vspi.write(0);
+    _vspi.write(0);
+    _vspi.write(0);
+    _vspi.write(0);
 
     uint8_t *src = &_spi_buffer[0];
     int32_t leds = _pixels[0] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
-      _vspi->writeBytes(src, _pixellen);
+      _vspi.writeBytes(src, _pixellen);
       src += _pixellen;
     }
 
     uint32_t latch_bytes = ( leds / 2 + 8 ) / 8;
     for (size_t c = 0; c < latch_bytes; c++) {
-      _vspi->write(0);
+      _vspi.write(0);
     }
 
   } else if (port == 1) {
-    if (!_hspi) {
-      _hspi = new SPIClass(HSPI);
-      _hspi->begin(-1, -1, -1, -1);
-    }
-
     uint8_t *dst = &_spi_buffer[0];
     for (int32_t c = 0; c < _pixels[0]; c += 4) {
       uint32_t p0 = data[c + 0];
@@ -236,23 +221,23 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
       *dst ++ = p1;
     }
 
-    _hspi->beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
+    _hspi.beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
 
-    _hspi->write(0);
-    _hspi->write(0);
-    _hspi->write(0);
-    _hspi->write(0);
+    _hspi.write(0);
+    _hspi.write(0);
+    _hspi.write(0);
+    _hspi.write(0);
 
     uint8_t *src = &_spi_buffer[0];
     int32_t leds = _pixels[0] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
-      _hspi->writeBytes(src, _pixellen);
+      _hspi.writeBytes(src, _pixellen);
       src += _pixellen;
     }
 
     uint32_t latch_bytes = ( leds / 2 + 8 ) / 8;
     for (size_t c = 0; c < latch_bytes; c++) {
-      _hspi->write(0);
+      _hspi.write(0);
     }
   }
 }
@@ -260,11 +245,6 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
 void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBytes) {
 
   if (port == 0) {
-    if (!_vspi) {
-      _vspi = new SPIClass(VSPI);
-      _vspi->begin(-1, -1, -1, -1);
-    }
-
     // Convert to SPI data
     uint8_t *dst = &_spi_buffer[0];
     for (int32_t c = 0; c < _pixels[0]; c++) {
@@ -278,24 +258,19 @@ void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBy
       }
     }
 
-    _vspi->beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
+    _vspi.beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
     uint8_t *src = &_spi_buffer[0];
     int32_t leds = _pixels[0] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
-      _vspi->writeBytes(src, _pixellen * 8);
+      _vspi.writeBytes(src, _pixellen * 8);
       src += _pixellen * 8;
     }
     for (size_t c = 0; c < SPI_LATCH_BITS; c++) {
-      _vspi->write(0);
+      _vspi.write(0);
     }
-    _vspi->endTransaction();
+    _vspi.endTransaction();
 
   } else if (port == 1) {
-    if (!_hspi) {
-      _hspi = new SPIClass(HSPI);
-      _hspi->begin(-1, -1, -1, -1);
-    }
-
     // Convert to SPI data
     uint8_t *dst = &_spi_buffer[0];
     for (int32_t c = 0; c < _pixels[1]; c++) {
@@ -309,16 +284,16 @@ void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBy
       }
     }
 
-    _hspi->beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
+    _hspi.beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
     uint8_t *src = &_spi_buffer[0];
     int32_t leds = _pixels[1] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
-      _hspi->writeBytes(src, _pixellen * 8);
+      _hspi.writeBytes(src, _pixellen * 8);
       src += _pixellen * 8;
     }
     for (size_t c = 0; c < SPI_LATCH_BITS; c++) {
-      _hspi->write(0);
+      _hspi.write(0);
     }
-    _hspi->endTransaction();
+    _hspi.endTransaction();
   }
 }

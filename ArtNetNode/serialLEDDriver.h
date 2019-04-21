@@ -21,7 +21,7 @@
 #ifndef serialLEDDriver_h
 #define serialLEDDriver_h
 
-#include <stdint.h>
+#include <SPI.h>
 
 #define PIX_MAX_BUFFER_SIZE 2040
 #define SPI_LATCH_BITS 100
@@ -86,8 +86,8 @@ class serialLEDDriver {
     uint32_t _pixellen;
     uint32_t _spi_speed;
 
-    SPIClass *_vspi;
-    SPIClass *_hspi;
+    SPIClass _vspi;
+    SPIClass _hspi;
 };
 
 #endif
