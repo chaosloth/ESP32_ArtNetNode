@@ -218,9 +218,9 @@ struct StoreStruct {
   IPAddress(2, 255, 255, 255), // hotspotBroadcast
   IPAddress(2, 255, 255, 255), // dmxInBroadcast
 
-  true,                        // dhcpEnable
+  false,                       // dhcpEnable
   false,                       // standAloneEnable
-  false,                       // ethernetEnable
+  true,                        // ethernetEnable
 
   "espArtNetNode",             // nodeName
   "espArtNetNode",             // longName
