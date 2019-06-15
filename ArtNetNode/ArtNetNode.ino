@@ -40,9 +40,9 @@
 
 #include <rom/rtc.h>
 
-#define CONFIG_VERSION "300"
-#define FIRMWARE_VERSION "3.0.0"
-#define ART_FIRM_VERSION 0x0300   // Firmware given over Artnet (2 uint8_ts)
+#define CONFIG_VERSION "301"
+#define FIRMWARE_VERSION "3.0.1"
+#define ART_FIRM_VERSION 0x0301   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123     // Artnet OEM Code
 #define ESTA_MAN 0x555F       // ESTA Manufacturer Code
@@ -218,7 +218,7 @@ struct StoreStruct {
   IPAddress(2, 255, 255, 255), // hotspotBroadcast
   IPAddress(2, 255, 255, 255), // dmxInBroadcast
 
-  false,                       // dhcpEnable
+  true,                       // dhcpEnable
   false,                       // standAloneEnable
   true,                        // ethernetEnable
 
