@@ -248,11 +248,11 @@ struct StoreStruct {
   {1, 2, 3, 4},                // portAsACNuni[4]
   {5, 6, 7, 8},                // portBsACNuni[4]
 
-  24,                          // portAnumPix
-  24,                          // portBnumPix
+  72,                          // portAnumPix
+  72,                          // portBnumPix
 
-  WS2812_RGB_800KHZ,           // portApixConfig
-  WS2812_RGB_800KHZ,           // portBpixConfig
+  WS2812_RGBW_800KHZ_SPECIAL,  // portApixConfig
+  WS2812_RGBW_800KHZ_SPECIAL,  // portBpixConfig
 
   false,                       // doFirmwareUpdate
 

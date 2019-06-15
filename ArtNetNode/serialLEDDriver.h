@@ -43,6 +43,7 @@ enum conf_type {
   // APA102 Clock Port 1 => HSPID => GPIO14 => Pin 13
   APA102_RGBB_800KHZ,
   APA102_RGBB_400KHZ,
+  WS2812_RGBW_800KHZ_SPECIAL
 };
 
 class SPIClass;

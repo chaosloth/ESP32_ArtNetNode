@@ -35,6 +35,7 @@ serialLEDDriver::serialLEDDriver() {
 
 void serialLEDDriver::setConfig(uint16_t config) {
   switch (config) {
+    case WS2812_RGBW_800KHZ_SPECIAL:
     case WS2812_RGBW_800KHZ:
       _pixellen = 4;
       _spi_speed = 800000 * 8;
@@ -104,6 +105,32 @@ void serialLEDDriver::clearBuffer(uint8_t port, uint16_t start) {
 void serialLEDDriver::setBuffer(uint8_t port, uint16_t startChan, uint8_t* data, uint16_t size) {
   uint8_t* a = buffer[port];
 
+  if (_config[port] ==  WS2812_RGBW_800KHZ_SPECIAL) {
+    if ( startChan >= 300 ) {
+      uint8_t *dst = &a[startChan-300];
+      size_t d = 0;
+      for (size_t c=0; c<size; c++) {
+        dst[d+3] = *data++;
+        d += 4;
+      }
+    } else {
+      uint8_t *dst = &a[startChan];
+      size_t d = 0;
+      for (size_t c=0; c<size; c += 3) {
+        dst[d+0] = *data++;
+        dst[d+1] = *data++;
+        dst[d+2] = *data++;
+        d += 4;
+      }
+      for (size_t c=0; c<size; c+=_pixellen) {
+        uint8_t tmp = dst[c+0];
+        dst[c+0] = dst[c+1];
+        dst[c+1] = tmp;
+      }
+    }
+    return;
+  }
+
   uint8_t *dst = &a[startChan];
   memcpy(dst, data, size);
   for (size_t c=0; c<size; c+=_pixellen) {
@@ -167,6 +194,7 @@ void serialLEDDriver::doPixel(uint8_t* data, uint8_t port, uint16_t numBytes) {
   {
     case WS2812_RGB_800KHZ:
     case WS2812_RGB_400KHZ:
+    case WS2812_RGBW_800KHZ_SPECIAL:
     case WS2812_RGBW_800KHZ:
     case WS2812_RGBW_400KHZ: {
         doPixel_ws2812(data, port, numBytes);
