@@ -106,10 +106,15 @@ void serialLEDDriver::setBuffer(uint8_t port, uint16_t startChan, uint8_t* data,
   uint8_t* a = buffer[port];
 
   if (_config[port] ==  WS2812_RGBW_800KHZ_SPECIAL) {
+    // limit to 100 leds
     const size_t split_off = 300;
     size_t wsize = 0;
     if ( size >= split_off) {
        wsize = size - split_off;
+       // limit to 100 leds
+       if (wsize > 100) {
+         wsize = 100;
+       }
        size = split_off;
     }
     if ( wsize ) {
