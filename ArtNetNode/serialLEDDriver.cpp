@@ -106,27 +106,34 @@ void serialLEDDriver::setBuffer(uint8_t port, uint16_t startChan, uint8_t* data,
   uint8_t* a = buffer[port];
 
   if (_config[port] ==  WS2812_RGBW_800KHZ_SPECIAL) {
-    if ( startChan >= 300 ) {
-      uint8_t *dst = &a[startChan-300];
-      size_t d = 0;
-      for (size_t c=0; c<size; c++) {
-        dst[d+3] = *data++;
-        d += 4;
-      }
-    } else {
+    const size_t split_off = 300;
+    size_t wsize = 0;
+    if ( size >= split_off) {
+       wsize = size - split_off;
+       size = split_off;
+    }
+    if ( wsize ) {
       uint8_t *dst = &a[startChan];
+      uint8_t *src = &data[split_off];
       size_t d = 0;
-      for (size_t c=0; c<size; c += 3) {
-        dst[d+0] = *data++;
-        dst[d+1] = *data++;
-        dst[d+2] = *data++;
+      for (size_t c=0; c<wsize; c++) {
+        dst[d+3] = *src++;
         d += 4;
       }
-      for (size_t c=0; c<size; c+=_pixellen) {
-        uint8_t tmp = dst[c+0];
-        dst[c+0] = dst[c+1];
-        dst[c+1] = tmp;
-      }
+    }
+    uint8_t *dst = &a[startChan];
+    uint8_t *src = &data[0];
+    size_t d = 0;
+    for (size_t c=0; c<size; c += 3) {
+      dst[d+0] = *src++;
+      dst[d+1] = *src++;
+      dst[d+2] = *src++;
+      d += 4;
+    }
+    for (size_t c=0; c<size; c+=_pixellen) {
+      uint8_t tmp = dst[c+0];
+      dst[c+0] = dst[c+1];
+      dst[c+1] = tmp;
     }
     return;
   }
