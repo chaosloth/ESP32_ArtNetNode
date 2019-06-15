@@ -16,6 +16,11 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see http://www.gnu.org/licenses/
 */
+
+//
+// esptool.py --chip esp32 --port COM<??????> write_flash -z 0x1000 -b 5 ArtNetNode.ino.esp32-poe.bin
+//
+
 #include <Arduino.h>
 
 #include "serialLEDDriver.h"
@@ -40,9 +45,9 @@
 
 #include <rom/rtc.h>
 
-#define CONFIG_VERSION "301"
-#define FIRMWARE_VERSION "3.0.1"
-#define ART_FIRM_VERSION 0x0301   // Firmware given over Artnet (2 uint8_ts)
+#define CONFIG_VERSION "302"
+#define FIRMWARE_VERSION "3.0.2"
+#define ART_FIRM_VERSION 0x0302   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123     // Artnet OEM Code
 #define ESTA_MAN 0x555F       // ESTA Manufacturer Code
@@ -218,7 +223,7 @@ struct StoreStruct {
   IPAddress(2, 255, 255, 255), // hotspotBroadcast
   IPAddress(2, 255, 255, 255), // dmxInBroadcast
 
-  true,                       // dhcpEnable
+  true,                        // dhcpEnable
   false,                       // standAloneEnable
   true,                        // ethernetEnable
 
@@ -239,14 +244,14 @@ struct StoreStruct {
 
   0,                           // portAnet
   0,                           // portAsub
-  {0, 1, 2, 3},                // portAuni[4]
+  {4, 5, 6, 7},                // portAuni[4]
 
   0,                           // portBnet
   0,                           // portBsub
-  {4, 5, 6, 7},                // portBuni[4]
+  {0, 1, 2, 3},                // portBuni[4]
 
-  {1, 2, 3, 4},                // portAsACNuni[4]
-  {5, 6, 7, 8},                // portBsACNuni[4]
+  {5, 6, 7, 8},                // portAsACNuni[4]
+  {1, 2, 3, 4},                // portBsACNuni[4]
 
   72,                          // portAnumPix
   72,                          // portBnumPix
