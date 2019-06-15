@@ -434,11 +434,25 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
     if (deviceSettings.portAmode == TYPE_SERIAL_LED) {
 
       if (deviceSettings.portApixMode == FX_MODE_PIXEL_MAP) {
-        if (numChans > 510)
-          numChans = 510;
-
-        // Copy DMX data to the pixels buffer
-        pixDriver.setBuffer(0, port * 510, artRDM.getDMX(group, port), numChans);
+        switch (deviceSettings.portApixConfig) {
+          case WS2812_RGB_800KHZ:
+          case WS2812_RGB_400KHZ:
+            if (numChans > 510)
+              numChans = 510;  
+            // Copy DMX data to the pixels buffer
+            pixDriver.setBuffer(0, port * 510, artRDM.getDMX(group, port), numChans);
+            break;
+          case WS2812_RGBW_800KHZ:
+          case WS2812_RGBW_800KHZ_SPECIAL:
+          case WS2812_RGBW_400KHZ:
+          case APA102_RGBB_800KHZ:
+          case APA102_RGBB_400KHZ:
+            if (numChans > 512)
+              numChans = 512;  
+            // Copy DMX data to the pixels buffer
+            pixDriver.setBuffer(0, port * 512, artRDM.getDMX(group, port), numChans);
+            break;
+        }
 
         // Output to pixel strip
         if (!syncEnabled)
@@ -475,12 +489,28 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
     if (deviceSettings.portBmode == TYPE_SERIAL_LED) {
 
       if (deviceSettings.portBpixMode == FX_MODE_PIXEL_MAP) {
-        if (numChans > 510) {
-          numChans = 510;
-        }
+        switch (deviceSettings.portApixConfig) {
+          case WS2812_RGB_800KHZ:
+          case WS2812_RGB_400KHZ:
+            if (numChans > 510) {
+              numChans = 510;
+            }    
+            // Copy DMX data to the pixels buffer
+            pixDriver.setBuffer(1, port * 510, artRDM.getDMX(group, port), numChans);
+            break;
 
-        // Copy DMX data to the pixels buffer
-        pixDriver.setBuffer(1, port * 510, artRDM.getDMX(group, port), numChans);
+          case WS2812_RGBW_800KHZ:
+          case WS2812_RGBW_800KHZ_SPECIAL:
+          case WS2812_RGBW_400KHZ:
+          case APA102_RGBB_800KHZ:
+          case APA102_RGBB_400KHZ:
+            if (numChans > 512) {
+              numChans = 512;
+            }    
+            // Copy DMX data to the pixels buffer
+            pixDriver.setBuffer(1, port * 512, artRDM.getDMX(group, port), numChans);
+            break;
+        }
 
         // Output to pixel strip
         if (!syncEnabled) {
@@ -1505,19 +1535,39 @@ static void artStart() {
 
   // Add extra Artnet ports for WS2812
   if (deviceSettings.portAmode == TYPE_SERIAL_LED && deviceSettings.portApixMode == FX_MODE_PIXEL_MAP) {
-    if (deviceSettings.portAnumPix > 170) {
+    int32_t lim1 = 170;
+    int32_t lim2 = 340;
+    int32_t lim3 = 510;
+    switch (deviceSettings.portApixConfig) {
+      case WS2812_RGB_800KHZ:
+      case WS2812_RGB_400KHZ:
+        lim1 = 170;
+        lim2 = 340;
+        lim3 = 510;
+        break;
+      case WS2812_RGBW_800KHZ:
+      case WS2812_RGBW_800KHZ_SPECIAL:
+      case WS2812_RGBW_400KHZ:
+      case APA102_RGBB_800KHZ:
+      case APA102_RGBB_400KHZ:
+        lim1 = 128;
+        lim2 = 256;
+        lim3 = 384;
+        break;
+    }
+    if (deviceSettings.portAnumPix > lim1) {
       portA[2] = artRDM.addPort(portA[0], 1, deviceSettings.portAuni[1], TYPE_DMX_OUT, deviceSettings.portAmerge);
 
       artRDM.setE131(portA[0], portA[2], e131);
       artRDM.setE131Uni(portA[0], portA[2], deviceSettings.portAsACNuni[1]);
     }
-    if (deviceSettings.portAnumPix > 340) {
+    if (deviceSettings.portAnumPix > lim2) {
       portA[3] = artRDM.addPort(portA[0], 2, deviceSettings.portAuni[2], TYPE_DMX_OUT, deviceSettings.portAmerge);
 
       artRDM.setE131(portA[0], portA[3], e131);
       artRDM.setE131Uni(portA[0], portA[3], deviceSettings.portAsACNuni[2]);
     }
-    if (deviceSettings.portAnumPix > 510) {
+    if (deviceSettings.portAnumPix > lim3) {
       portA[4] = artRDM.addPort(portA[0], 3, deviceSettings.portAuni[3], TYPE_DMX_OUT, deviceSettings.portAmerge);
 
       artRDM.setE131(portA[0], portA[4], e131);
@@ -1542,19 +1592,39 @@ static void artStart() {
 
   // Add extra Artnet ports for WS2812
   if (deviceSettings.portBmode == TYPE_SERIAL_LED && deviceSettings.portBpixMode == FX_MODE_PIXEL_MAP) {
-    if (deviceSettings.portBnumPix > 170) {
+    int32_t lim1 = 170;
+    int32_t lim2 = 340;
+    int32_t lim3 = 510;
+    switch (deviceSettings.portBpixConfig) {
+      case WS2812_RGB_800KHZ:
+      case WS2812_RGB_400KHZ:
+        lim1 = 170;
+        lim2 = 340;
+        lim3 = 510;
+        break;
+      case WS2812_RGBW_800KHZ:
+      case WS2812_RGBW_800KHZ_SPECIAL:
+      case WS2812_RGBW_400KHZ:
+      case APA102_RGBB_800KHZ:
+      case APA102_RGBB_400KHZ:
+        lim1 = 128;
+        lim2 = 256;
+        lim3 = 384;
+        break;
+    }
+    if (deviceSettings.portBnumPix > lim1) {
       portB[2] = artRDM.addPort(portB[0], 1, deviceSettings.portBuni[1], TYPE_DMX_OUT, deviceSettings.portBmerge);
 
       artRDM.setE131(portB[0], portB[2], e131);
       artRDM.setE131Uni(portB[0], portB[2], deviceSettings.portBsACNuni[1]);
     }
-    if (deviceSettings.portBnumPix > 340) {
+    if (deviceSettings.portBnumPix > lim2) {
       portB[3] = artRDM.addPort(portB[0], 2, deviceSettings.portBuni[2], TYPE_DMX_OUT, deviceSettings.portBmerge);
 
       artRDM.setE131(portB[0], portB[3], e131);
       artRDM.setE131Uni(portB[0], portB[3], deviceSettings.portBsACNuni[2]);
     }
-    if (deviceSettings.portBnumPix > 510) {
+    if (deviceSettings.portBnumPix > lim3) {
       portB[4] = artRDM.addPort(portB[0], 3, deviceSettings.portBuni[3], TYPE_DMX_OUT, deviceSettings.portBmerge);
 
       artRDM.setE131(portB[0], portB[4], e131);
