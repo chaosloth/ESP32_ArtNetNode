@@ -101,7 +101,7 @@ static serialLEDDriver pixDriver;
 static espArtNetRDM artRDM;
 
 static WebServer webServer(80);
-static DynamicJsonBuffer jsonBuffer;
+static DynamicJsonDocument jsonDocument(65536);
 
 static File fsUploadFile;
 
@@ -673,7 +673,7 @@ static void dmxIn(uint16_t num) {
   newDmxIn = true;
 }
 
-static bool ajaxSave(uint8_t page, JsonObject& json) {
+static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
   // This is a load request, not a save
   if (json.size() == 2) {
     return true;
@@ -686,10 +686,10 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
       break;
 
     case 2:     // Wifi
-      json.get<String>("wifiSSID").toCharArray(deviceSettings.wifiSSID, 40);
-      json.get<String>("wifiPass").toCharArray(deviceSettings.wifiPass, 40);
-      json.get<String>("hotspotSSID").toCharArray(deviceSettings.hotspotSSID, 20);
-      json.get<String>("hotspotPass").toCharArray(deviceSettings.hotspotPass, 20);
+      strncpy(deviceSettings.wifiSSID, json["wifiSSID"], 40);
+      strncpy(deviceSettings.wifiPass, json["wifiPass"], 40);
+      strncpy(deviceSettings.hotspotSSID, json["hotspotSSID"], 20);
+      strncpy(deviceSettings.hotspotPass, json["hotspotPass"], 20);
       deviceSettings.hotspotDelay = (uint8_t)json["hotspotDelay"];
       deviceSettings.standAloneEnable = (bool)json["standAloneEnable"];
       deviceSettings.ethernetEnable = (bool)json["ethernetEnable"];
@@ -709,8 +709,8 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
       //                            uint8_t(~deviceSettings.subnet[2] | (deviceSettings.ip[2] & deviceSettings.subnet[2])),
       //                            uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))};
 
-      json.get<String>("nodeName").toCharArray(deviceSettings.nodeName, 18);
-      json.get<String>("longName").toCharArray(deviceSettings.longName, 64);
+      strncpy(deviceSettings.nodeName, json["nodeName"], 18);
+      strncpy(deviceSettings.longName, json["longName"], 64);
 
       if (!isHotspot && (bool)json["dhcpEnable"] != deviceSettings.dhcpEnable) {
         if ((bool)json["dhcpEnable"]) {
@@ -1002,18 +1002,18 @@ static bool ajaxSave(uint8_t page, JsonObject& json) {
   return false;
 }
 
-static void ajaxLoad(uint8_t page, JsonObject& jsonReply) {
+static void ajaxLoad(uint8_t page, JsonDocument& jsonReply) {
 
   // Create the needed arrays here - doesn't work within the switch below
-  JsonArray& ipAddress = jsonReply.createNestedArray("ipAddress");
-  JsonArray& subAddress = jsonReply.createNestedArray("subAddress");
-  JsonArray& gwAddress = jsonReply.createNestedArray("gwAddress");
-  JsonArray& bcAddress = jsonReply.createNestedArray("bcAddress");
-  JsonArray& portAuni = jsonReply.createNestedArray("portAuni");
-  JsonArray& portBuni = jsonReply.createNestedArray("portBuni");
-  JsonArray& portAsACNuni = jsonReply.createNestedArray("portAsACNuni");
-  JsonArray& portBsACNuni = jsonReply.createNestedArray("portBsACNuni");
-  JsonArray& dmxInBroadcast = jsonReply.createNestedArray("dmxInBroadcast");
+  JsonArray ipAddress = jsonReply.createNestedArray("ipAddress");
+  JsonArray subAddress = jsonReply.createNestedArray("subAddress");
+  JsonArray gwAddress = jsonReply.createNestedArray("gwAddress");
+  JsonArray bcAddress = jsonReply.createNestedArray("bcAddress");
+  JsonArray portAuni = jsonReply.createNestedArray("portAuni");
+  JsonArray portBuni = jsonReply.createNestedArray("portBuni");
+  JsonArray portAsACNuni = jsonReply.createNestedArray("portAsACNuni");
+  JsonArray portBsACNuni = jsonReply.createNestedArray("portBsACNuni");
+  JsonArray dmxInBroadcast = jsonReply.createNestedArray("dmxInBroadcast");
 
   // Get MAC Address
   char MAC_char[30] = "";
@@ -1305,22 +1305,22 @@ static void ajaxLoad(uint8_t page, JsonObject& jsonReply) {
 }
 
 static void ajaxHandle() {
-  JsonObject& json = jsonBuffer.parseObject(webServer.arg("plain"));
-  JsonObject& jsonReply = jsonBuffer.createObject();
+  deserializeJson(jsonDocument, webServer.arg("plain"));
+  DynamicJsonDocument jsonReply(65536);
 
   String reply;
 
   // Handle request to reboot into update mode
-  if (json.containsKey("success") && json["success"] == 1 && json.containsKey("doUpdate")) {
+  if (jsonDocument.containsKey("success") && jsonDocument["success"] == 1 && jsonDocument.containsKey("doUpdate")) {
     artRDM.end();
 
     jsonReply["success"] = 1;
     jsonReply["doUpdate"] = 1;
 
-    jsonReply.printTo(reply);
+    serializeJson(jsonReply, reply);
     webServer.send(200, "application/json", reply);
 
-    if (json["doUpdate"] == 1) {
+    if (jsonDocument["doUpdate"] == 1) {
       // Turn pixel strips off if they're on
       pixDriver.updateStrip(0, 0, deviceSettings.portApixConfig);
       pixDriver.updateStrip(1, 0, deviceSettings.portBpixConfig);
@@ -1332,11 +1332,11 @@ static void ajaxHandle() {
     }
 
     // Handle load and save of data
-  } else if (json.containsKey("success") && json["success"] == 1 && json.containsKey("page")) {
-    if (ajaxSave((uint8_t)json["page"], json)) {
-      ajaxLoad((uint8_t)json["page"], jsonReply);
+  } else if (jsonDocument.containsKey("success") && jsonDocument["success"] == 1 && jsonDocument.containsKey("page")) {
+    if (ajaxSave((uint8_t)jsonDocument["page"], jsonDocument)) {
+        ajaxLoad((uint8_t)jsonDocument["page"], jsonReply);
 
-      if (json.size() > 2) {
+      if (jsonDocument.size() > 2) {
         jsonReply["message"] = "Settings Saved";
       }
     } else {
@@ -1345,7 +1345,7 @@ static void ajaxHandle() {
     }
 
     // Handle reboots
-  } else if (json.containsKey("success") && json.containsKey("reboot") && json["reboot"] == 1) {
+  } else if (jsonDocument.containsKey("success") && jsonDocument.containsKey("reboot") && jsonDocument["reboot"] == 1) {
     jsonReply["success"] = 1;
     jsonReply["message"] = "Device Restarting.";
 
@@ -1358,7 +1358,7 @@ static void ajaxHandle() {
     // Handle errors
   }
 
-  jsonReply.printTo(reply);
+  serializeJson(jsonReply, reply);
   webServer.send(200, "application/json", reply);
 }
 
