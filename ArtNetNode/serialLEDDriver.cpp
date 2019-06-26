@@ -25,41 +25,24 @@
 // https://wp.josh.com/2014/05/13/ws2812-neopixels-are-not-so-finicky-once-you-get-to-know-them/
 
 serialLEDDriver::serialLEDDriver() {
-  _pixels[0] = 0;
-  _pixels[1] = 0;
+  _datalen[0] = 0;
+  _datalen[1] = 0;
   _pixellen = 3;
-  _spi_speed = 400000 * 8;
+  _spi_speed = 800000 * 8;
   _vspi.begin();
   _hspi.begin();
 }
 
 void serialLEDDriver::setConfig(uint16_t config) {
   switch (config) {
-    case WS2812_RGBW_800KHZ_SPECIAL:
-    case WS2812_RGBW_800KHZ:
-      _pixellen = 4;
-      _spi_speed = 800000 * 8;
-      break;
-    case WS2812_RGBW_400KHZ:
-      _pixellen = 4;
-      _spi_speed = 400000 * 8;
-      break;
-    case WS2812_RGB_800KHZ:
-      _pixellen = 3;
-      _spi_speed = 800000 * 8;
-      break;
     default:
-    case WS2812_RGB_400KHZ:
+    case WS2812_RGB:
       _pixellen = 3;
-      _spi_speed = 400000 * 8;
       break;
-    case APA102_RGBB_800KHZ:
+    case WS2812_RGBW:
+    case WS2812_RGBW_SPLIT:
+    case APA102_RGBB:
       _pixellen = 4;
-      _spi_speed = 800000 * 8;
-      break;
-    case APA102_RGBB_400KHZ:
-      _pixellen = 4;
-      _spi_speed = 400000 * 8;
       break;
   }
 }
@@ -67,7 +50,7 @@ void serialLEDDriver::setConfig(uint16_t config) {
 void serialLEDDriver::setStrip(uint8_t port, uint16_t size, uint16_t config) {
   setConfig(config);
 
-  _pixels[port] = size  * _pixellen;
+  _datalen[port] = size  * _pixellen;
   _config[port] = config;
 
   clearBuffer(port);
@@ -83,14 +66,14 @@ void serialLEDDriver::updateStrip(uint8_t port, uint16_t size, uint16_t config) 
   size *= _pixellen;
 
   // Clear the strip if it's shorter than our current strip
-  if (size < _pixels[port] || _config[port] != config) {
+  if (size < _datalen[port] || _config[port] != config) {
     clearBuffer(port, size);
 
     uint8_t* b = buffer[port];
-    doPixel(b, port, _pixels[port]);
+    doPixel(b, port, _datalen[port]);
   }
 
-  _pixels[port] = size;
+  _datalen[port] = size;
   _config[port] = config;
 }
 
@@ -105,42 +88,22 @@ void serialLEDDriver::clearBuffer(uint8_t port, uint16_t start) {
 void serialLEDDriver::setBuffer(uint8_t port, uint16_t startChan, uint8_t* data, uint16_t size) {
   uint8_t* a = buffer[port];
 
-  if (_config[port] ==  WS2812_RGBW_800KHZ_SPECIAL) {
-    // limit to 72 leds
-    const size_t split_off = 216;
-    size_t wsize = 0;
-    if ( size >= split_off) {
-       wsize = size - split_off;
-       // limit to 72 leds
-       if (wsize > 216) {
-         wsize = 216;
-       }
-       size = split_off;
-    }
-    if ( wsize ) {
-      uint8_t *dst = &a[startChan];
-      uint8_t *src = &data[split_off];
-      size_t d = 0;
-      for (size_t c=0; c<wsize; c += 3) {
-        dst[d+3] = *src++;
-        src++;
-        src++;
-        d += 4;
+  if (_config[port] == WS2812_RGBW_SPLIT) {
+    // Interleave W channel
+    if (startChan >= 512*3) {
+      uint8_t *dst = &a[startChan-512*3];
+      uint8_t *src = &data[0];
+      for (size_t c=0; c<size; c++) {
+        dst[c*4+3] = src[c];
       }
-    }
-    uint8_t *dst = &a[startChan];
-    uint8_t *src = &data[0];
-    size_t d = 0;
-    for (size_t c=0; c<size; c += 3) {
-      dst[d+0] = *src++;
-      dst[d+1] = *src++;
-      dst[d+2] = *src++;
-      d += 4;
-    }
-    for (size_t c=0; c<size; c+=_pixellen) {
-      uint8_t tmp = dst[c+0];
-      dst[c+0] = dst[c+1];
-      dst[c+1] = tmp;
+    } else {
+      uint8_t *dst = &a[startChan];
+      uint8_t *src = &data[0];
+      for (size_t c=0; c<size/4; c++) {
+        dst[c*4+0] = src[c*3+1];
+        dst[c*4+1] = src[c*3+0];
+        dst[c*4+2] = src[c*3+2];
+      }
     }
     return;
   }
@@ -172,7 +135,7 @@ uint8_t serialLEDDriver::setPixel(uint8_t port, uint16_t pixel, uint32_t colour)
 
 uint32_t serialLEDDriver::getPixel(uint8_t port) {
   uint8_t* b = buffer[port];
-  uint16_t chan = _pixels[port] * _pixellen;
+  uint16_t chan = _datalen[port] * _pixellen;
   // ws2812 is GRB ordering - return RGB
   if (_pixellen > 3) {
     return ((b[chan + 3] << 24) | (b[chan + 1] << 16) | (b[chan] << 8) | (b[chan + 2]));
@@ -182,22 +145,22 @@ uint32_t serialLEDDriver::getPixel(uint8_t port) {
 }
 
 uint16_t serialLEDDriver::numPixels(uint8_t port) {
-  return _pixels[port] / _pixellen;
+  return _datalen[port] / _pixellen;
 }
 
 bool serialLEDDriver::show() {
-  if (_pixels[0] == 0 && _pixels[1] == 0) {
+  if (_datalen[0] == 0 && _datalen[1] == 0) {
     return 1;
   }
 
-  if ( _pixels[0] != 0) {
+  if ( _datalen[0] != 0) {
     uint8_t* b0 = buffer[0];
-    doPixel(b0, 0, _pixels[0]);
+    doPixel(b0, 0, _datalen[0]);
   }
 
-  if (_pixels[1] != 0) {
+  if (_datalen[1] != 0) {
     uint8_t* b1 = buffer[1];
-    doPixel(b1, 1, _pixels[1]);
+    doPixel(b1, 1, _datalen[1]);
   }
 
   return 1;
@@ -206,15 +169,12 @@ bool serialLEDDriver::show() {
 void serialLEDDriver::doPixel(uint8_t* data, uint8_t port, uint16_t numBytes) {
   switch (_config[port])
   {
-    case WS2812_RGB_800KHZ:
-    case WS2812_RGB_400KHZ:
-    case WS2812_RGBW_800KHZ_SPECIAL:
-    case WS2812_RGBW_800KHZ:
-    case WS2812_RGBW_400KHZ: {
+    case WS2812_RGB:
+    case WS2812_RGBW_SPLIT:
+    case WS2812_RGBW: {
         doPixel_ws2812(data, port, numBytes);
       } break;
-    case APA102_RGBB_800KHZ:
-    case APA102_RGBB_400KHZ: {
+    case APA102_RGBB: {
         doPixel_apa102(data, port, numBytes);
       } break;
   }
@@ -225,7 +185,7 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
   if (port == 0) {
     // Convert to SPI data
     uint8_t *dst = &_spi_buffer[0];
-    for (int32_t c = 0; c < _pixels[0]; c += 4) {
+    for (int32_t c = 0; c < _datalen[0]; c += 4) {
       uint32_t p0 = data[c + 0];
       uint32_t p1 = data[c + 1];
       uint32_t p2 = data[c + 2];
@@ -244,7 +204,7 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
     _vspi.write(0);
 
     uint8_t *src = &_spi_buffer[0];
-    int32_t leds = _pixels[0] / _pixellen;
+    int32_t leds = _datalen[0] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
       _vspi.writeBytes(src, _pixellen);
       src += _pixellen;
@@ -257,7 +217,7 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
 
   } else if (port == 1) {
     uint8_t *dst = &_spi_buffer[0];
-    for (int32_t c = 0; c < _pixels[0]; c += 4) {
+    for (int32_t c = 0; c < _datalen[0]; c += 4) {
       uint32_t p0 = data[c + 0];
       uint32_t p1 = data[c + 1];
       uint32_t p2 = data[c + 2];
@@ -276,7 +236,7 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
     _hspi.write(0);
 
     uint8_t *src = &_spi_buffer[0];
-    int32_t leds = _pixels[0] / _pixellen;
+    int32_t leds = _datalen[0] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
       _hspi.writeBytes(src, _pixellen);
       src += _pixellen;
@@ -294,7 +254,7 @@ void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBy
   if (port == 0) {
     // Convert to SPI data
     uint8_t *dst = &_spi_buffer[0];
-    for (int32_t c = 0; c < _pixels[0]; c++) {
+    for (int32_t c = 0; c < _datalen[0]; c++) {
       uint8_t p = data[c];
       for (int32_t d = 7; d >= 0; d--) {
         if (p & (1 << d)) {
@@ -307,7 +267,7 @@ void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBy
 
     _vspi.beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
     uint8_t *src = &_spi_buffer[0];
-    int32_t leds = _pixels[0] / _pixellen;
+    int32_t leds = _datalen[0] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
       _vspi.writeBytes(src, _pixellen * 8);
       src += _pixellen * 8;
@@ -320,7 +280,7 @@ void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBy
   } else if (port == 1) {
     // Convert to SPI data
     uint8_t *dst = &_spi_buffer[0];
-    for (int32_t c = 0; c < _pixels[1]; c++) {
+    for (int32_t c = 0; c < _datalen[1]; c++) {
       uint8_t p = data[c];
       for (int32_t d = 7; d >= 0; d--) {
         if (p & (1 << d)) {
@@ -333,7 +293,7 @@ void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBy
 
     _hspi.beginTransaction(SPISettings(_spi_speed, MSBFIRST, SPI_MODE0));
     uint8_t *src = &_spi_buffer[0];
-    int32_t leds = _pixels[1] / _pixellen;
+    int32_t leds = _datalen[1] / _pixellen;
     for (size_t c = 0; c < leds; c++) {
       _hspi.writeBytes(src, _pixellen * 8);
       src += _pixellen * 8;

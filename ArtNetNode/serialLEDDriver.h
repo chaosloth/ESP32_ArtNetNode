@@ -23,7 +23,8 @@
 
 #include <SPI.h>
 
-#define PIX_MAX_BUFFER_SIZE 2040
+#define LED_PORTS 2
+#define PIX_MAX_BUFFER_SIZE 2048
 #define SPI_LATCH_BITS 100
 
 enum conf_type {
@@ -31,19 +32,16 @@ enum conf_type {
   // On a ESP32 Wroom module that would be:
   // WS2812DATA Port 0 => VSPID => GPIO23 => Pin 37
   // WS2812DATA Port 1 => HSPID => GPIO13 => Pin 16
-  WS2812_RGB_800KHZ,
-  WS2812_RGB_400KHZ,
-  WS2812_RGBW_800KHZ,
-  WS2812_RGBW_400KHZ,
+  WS2812_RGB,
+  WS2812_RGBW,
+  WS2812_RGBW_SPLIT,
   // APA102 use VSPI/HSPI pins only, port 0 and port 1 respectively.
   // On a ESP32 Wroom module that would be:
   // APA102 Data Port 0 => VSPID => GPIO23 => Pin 37
   // APA102 Clock Port 0 => VSPID => GPIO18 => Pin 30
   // APA102 Data Port 1 => HSPID => GPIO13 => Pin 16
   // APA102 Clock Port 1 => HSPID => GPIO14 => Pin 13
-  APA102_RGBB_800KHZ,
-  APA102_RGBB_400KHZ,
-  WS2812_RGBW_800KHZ_SPECIAL
+  APA102_RGBB,
 };
 
 class SPIClass;
@@ -71,7 +69,7 @@ class serialLEDDriver {
 
     uint16_t numPixels(uint8_t port);
 
-    uint8_t buffer[2][PIX_MAX_BUFFER_SIZE];
+    uint8_t buffer[LED_PORTS][PIX_MAX_BUFFER_SIZE];
 
     void doPixel(uint8_t* data, uint8_t pin, uint16_t numBytes);
 
@@ -82,8 +80,8 @@ class serialLEDDriver {
     void doPixel_ws2812(uint8_t* data, uint8_t pin, uint16_t numBytes);
 
     uint8_t _spi_buffer[PIX_MAX_BUFFER_SIZE * 8];
-    uint16_t _pixels[2];
-    uint16_t _config[2];
+    uint16_t _datalen[LED_PORTS];
+    uint16_t _config[LED_PORTS];
     uint32_t _pixellen;
     uint32_t _spi_speed;
 
