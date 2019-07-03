@@ -278,7 +278,7 @@ void serialLEDDriver::doPixel_apa102(uint8_t* data, uint8_t port, uint16_t numBy
 void serialLEDDriver::doPixel_ws2812(uint8_t* data, uint8_t port, uint16_t numBytes) {
   // Convert to SPI data
   uint8_t *dst = &_spi_buffer[port][0];
-  for (int32_t c = 0; c < _datalen[1]; c++) {
+  for (int32_t c = 0; c < _datalen[port]; c++) {
     uint8_t p = data[c];
     *dst++ =
       ((p & (1 << 7)) ? 0b11000000 : 0b10000000)|

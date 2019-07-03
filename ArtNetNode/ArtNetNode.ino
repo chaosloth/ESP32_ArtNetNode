@@ -36,6 +36,9 @@
 
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
+
+// Mod wire ETH MDC(RMII) from GPIO 23 to GPIO 0 
+// so we can use VSPI MOSI on GPIO 23
 #define ETH_PHY_MDC 0
 
 #include <ETH.h>
@@ -46,9 +49,9 @@
 
 #include <rom/rtc.h>
 
-#define CONFIG_VERSION "303"
-#define FIRMWARE_VERSION "3.0.3"
-#define ART_FIRM_VERSION 0x0303   // Firmware given over Artnet (2 uint8_ts)
+#define CONFIG_VERSION "305"
+#define FIRMWARE_VERSION "3.0.5"
+#define ART_FIRM_VERSION 0x0305   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123     // Artnet OEM Code
 #define ESTA_MAN 0x555F       // ESTA Manufacturer Code
@@ -102,7 +105,7 @@ static serialLEDDriver pixDriver;
 static espArtNetRDM artRDM;
 
 static WebServer webServer(80);
-static DynamicJsonDocument jsonDocument(65536);
+static DynamicJsonDocument jsonDocument(16384);
 
 static File fsUploadFile;
 
@@ -236,7 +239,7 @@ struct StoreStruct {
   "1234567890123",             // hotspotPass
   15,                          // hotspotDelay
 
-  TYPE_DMX_OUT,                // portAmode
+  TYPE_SERIAL_LED,             // portAmode
   TYPE_SERIAL_LED,             // portBmode
   PROT_ARTNET,                 // portAprot
   PROT_ARTNET,                 // portBprot
@@ -245,20 +248,20 @@ struct StoreStruct {
 
   0,                           // portAnet
   0,                           // portAsub
-  {4, 5, 6, 7},                // portAuni[4]
+  {0, 1, 2, 3},                // portAuni[4]
 
   0,                           // portBnet
   0,                           // portBsub
-  {0, 1, 2, 3},                // portBuni[4]
+  {4, 5, 6, 7},                // portBuni[4]
 
-  {5, 6, 7, 8},                // portAsACNuni[4]
-  {1, 2, 3, 4},                // portBsACNuni[4]
+  {1, 2, 3, 4},                // portAsACNuni[4]
+  {5, 6, 7, 8},                // portBsACNuni[4]
 
-  72,                          // portAnumPix
-  72,                          // portBnumPix
+  522,                          // portAnumPix
+  403,                          // portBnumPix
 
-  WS2812_RGBW_SPLIT,            // portApixConfig
-  WS2812_RGBW_SPLIT,           // portBpixConfig
+  WS2812_RGB,                  // portApixConfig
+  WS2812_RGB,                  // portBpixConfig
 
   false,                       // doFirmwareUpdate
 
@@ -1295,7 +1298,7 @@ static void ajaxLoad(uint8_t page, JsonDocument& jsonReply) {
 
 static void ajaxHandle() {
   deserializeJson(jsonDocument, webServer.arg("plain"));
-  DynamicJsonDocument jsonReply(65536);
+  DynamicJsonDocument jsonReply(16384);
 
   String reply;
 
