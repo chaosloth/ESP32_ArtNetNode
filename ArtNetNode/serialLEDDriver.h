@@ -21,11 +21,11 @@
 #ifndef serialLEDDriver_h
 #define serialLEDDriver_h
 
-#include <SPI.h>
+#include "driver/spi_master.h"
 
 #define LED_PORTS 2
 #define PIX_MAX_BUFFER_SIZE 2048
-#define SPI_LATCH_BITS 100
+#define SPI_LATCH_BITS 512
 
 enum conf_type {
   // WS2812 use VSPI/HSPI pins only, port 0 and port 1 respectively.
@@ -74,19 +74,25 @@ class serialLEDDriver {
     void doPixel(uint8_t* data, uint8_t pin, uint16_t numBytes);
 
   private:
+    static void timerCallback(void *arg);
+    void timer();
+
     void setConfig(uint16_t config);
 
     void doPixel_apa102(uint8_t* data, uint8_t pin, uint16_t numBytes);
     void doPixel_ws2812(uint8_t* data, uint8_t pin, uint16_t numBytes);
 
-    uint8_t _spi_buffer[PIX_MAX_BUFFER_SIZE * 8];
+    uint8_t _spi_buffer[2][PIX_MAX_BUFFER_SIZE * 8 + SPI_LATCH_BITS];
+    size_t _spi_datalen[2];
+
     uint16_t _datalen[LED_PORTS];
     uint16_t _config[LED_PORTS];
     uint32_t _pixellen;
+
     uint32_t _spi_speed;
 
-    SPIClass _vspi;
-    SPIClass _hspi;
+    spi_device_handle_t hspi_dev_handle;
+    spi_device_handle_t vspi_dev_handle;
 };
 
 #endif

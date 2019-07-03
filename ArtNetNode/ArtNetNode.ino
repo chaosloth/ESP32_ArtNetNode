@@ -36,6 +36,7 @@
 
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
+#define ETH_PHY_MDC 0
 
 #include <ETH.h>
 #include <FS.h>
@@ -493,7 +494,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
     if (deviceSettings.portBmode == TYPE_SERIAL_LED) {
 
       if (deviceSettings.portBpixMode == FX_MODE_PIXEL_MAP) {
-        switch (deviceSettings.portApixConfig) {
+        switch (deviceSettings.portBpixConfig) {
           case WS2812_RGB:
             if (numChans > 510) {
               numChans = 510;
