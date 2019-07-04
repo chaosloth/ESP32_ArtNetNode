@@ -39,7 +39,7 @@
 
 // Mod wire ETH MDC(RMII) from GPIO 23 to GPIO 0 
 // so we can use VSPI MOSI on GPIO 23
-#define ETH_PHY_MDC 0
+//#define ETH_PHY_MDC 0
 
 #include <ETH.h>
 #include <FS.h>
