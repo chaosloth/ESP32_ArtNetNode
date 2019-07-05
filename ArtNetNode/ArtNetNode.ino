@@ -49,9 +49,9 @@
 
 #include <rom/rtc.h>
 
-#define CONFIG_VERSION "305"
-#define FIRMWARE_VERSION "3.0.5"
-#define ART_FIRM_VERSION 0x0305   // Firmware given over Artnet (2 uint8_ts)
+#define CONFIG_VERSION "307"
+#define FIRMWARE_VERSION "3.0.7"
+#define ART_FIRM_VERSION 0x0307   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123     // Artnet OEM Code
 #define ESTA_MAN 0x555F       // ESTA Manufacturer Code
@@ -73,8 +73,8 @@
 //
 // Customizable pins:
 //
-#define DMX_DIR_A       0     // DMX data UART Direction port A pin 
-#define DMX_DIR_B       39    // DMX data UART Direction port B pin
+//#define DMX_DIR_A       0     // DMX data UART Direction port A pin 
+//#define DMX_DIR_B       39    // DMX data UART Direction port B pin
 
 //#define NO_RESET            // Un comment to disable the reset button
 #ifndef NO_RESET
@@ -304,10 +304,14 @@ static void eepromLoad() {
 
 void setup(void) {
   // Make direction input to avoid boot garbage being sent out
+#ifdef DMX_DIR_A
   pinMode(DMX_DIR_A, OUTPUT);
   digitalWrite(DMX_DIR_A, LOW);
+#endif  // #ifdef DMX_DIR_A
+#ifdef DMX_DIR_B
   pinMode(DMX_DIR_B, OUTPUT);
   digitalWrite(DMX_DIR_B, LOW);
+#endif  // #ifdef DMX_DIR_B
 
   bool resetDefaults = false;
 
@@ -1472,18 +1476,22 @@ static void portSetup() {
 
   if (deviceSettings.portAmode == TYPE_DMX_OUT || deviceSettings.portAmode == TYPE_RDM_OUT) {
 
+#ifdef DMX_DIR_A
     dmxA.begin(DMX_DIR_A, artRDM.getDMX(portA[0], portA[1]));
     if (deviceSettings.portAmode == TYPE_RDM_OUT && !dmxA.rdmEnabled()) {
       dmxA.rdmEnable(ESTA_MAN, ESTA_DEV);
       dmxA.rdmSetCallBack(rdmReceivedA);
       dmxA.todSetCallBack(sendTodA);
     }
+#endif  // #ifdef DMX_DIR_A
 
   } else if (deviceSettings.portAmode == TYPE_DMX_IN) {
 
+#ifdef DMX_DIR_A
     dmxA.begin(DMX_DIR_A, artRDM.getDMX(portA[0], portA[1]));
     dmxA.dmxIn(true);
     dmxA.setInputCallback(dmxIn);
+#endif  // #ifdef DMX_DIR_A
 
     dataIn = (uint8_t*) malloc(sizeof(uint8_t) * 512);
     memset(dataIn, 0, 512);
@@ -1493,12 +1501,16 @@ static void portSetup() {
   }
 
   if (deviceSettings.portBmode == TYPE_DMX_OUT || deviceSettings.portBmode == TYPE_RDM_OUT) {
+
+#ifdef DMX_DIR_B
     dmxB.begin(DMX_DIR_B, artRDM.getDMX(portB[0], portB[1]));
     if (deviceSettings.portBmode == TYPE_RDM_OUT && !dmxB.rdmEnabled()) {
       dmxB.rdmEnable(ESTA_MAN, ESTA_DEV);
       dmxB.rdmSetCallBack(rdmReceivedB);
       dmxB.todSetCallBack(sendTodB);
     }
+#endif  // #ifdef DMX_DIR_B
+
   } else if (deviceSettings.portBmode == TYPE_SERIAL_LED)  {
     pixDriver.setStrip(1, deviceSettings.portBnumPix, deviceSettings.portBpixConfig);
   }
