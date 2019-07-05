@@ -49,9 +49,9 @@
 
 #include <rom/rtc.h>
 
-#define CONFIG_VERSION "307"
-#define FIRMWARE_VERSION "3.0.7"
-#define ART_FIRM_VERSION 0x0307   // Firmware given over Artnet (2 uint8_ts)
+#define CONFIG_VERSION "308"
+#define FIRMWARE_VERSION "3.0.8"
+#define ART_FIRM_VERSION 0x0308   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123     // Artnet OEM Code
 #define ESTA_MAN 0x555F       // ESTA Manufacturer Code
@@ -378,6 +378,8 @@ void setup(void) {
   } else {
     deviceSettings.doFirmwareUpdate = false;
   }
+  
+  Serial.begin(115200);
 
   delay(10);
 }
@@ -1796,8 +1798,10 @@ static void ETHEvent(WiFiEvent_t event)
   switch (event) {
     case SYSTEM_EVENT_ETH_START:
       ETH.setHostname(deviceSettings.nodeName);
+      Serial.println("SYSTEM_EVENT_ETH_START");
       break;
     case SYSTEM_EVENT_ETH_CONNECTED:
+      Serial.println("SYSTEM_EVENT_ETH_CONNECTED");
       break;
     case SYSTEM_EVENT_ETH_GOT_IP:
       deviceSettings.ip = ETH.localIP();
@@ -1811,10 +1815,13 @@ static void ETHEvent(WiFiEvent_t event)
                                   uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))
                                };
       esp_eth_get_mac(MAC_array);
+      Serial.println("SYSTEM_EVENT_ETH_GOT_IP");
       break;
     case SYSTEM_EVENT_ETH_DISCONNECTED:
+      Serial.println("SYSTEM_EVENT_ETH_DISCONNECTED");
       break;
     case SYSTEM_EVENT_ETH_STOP:
+      Serial.println("SYSTEM_EVENT_ETH_STOP");
       break;
     default:
       break;
@@ -1825,6 +1832,15 @@ static void wifiStart() {
   // If it's the default WiFi SSID, make it unique
   if (strcmp(deviceSettings.hotspotSSID, "espArtNetNode") == 0 || deviceSettings.hotspotSSID[0] == '\0') {
     sprintf(deviceSettings.hotspotSSID, "espArtNetNode_%05u", uint32_t((ESP.getEfuseMac() >> 32) & 0xFFFF));
+  }
+
+  if (deviceSettings.ethernetEnable) {
+    WiFi.onEvent(ETHEvent);
+    ETH.begin();
+    if (!deviceSettings.dhcpEnable) {
+      ETH.config(deviceSettings.ip, deviceSettings.gateway, deviceSettings.subnet);
+    }
+    return;
   }
 
   if (deviceSettings.standAloneEnable) {
@@ -1838,15 +1854,6 @@ static void wifiStart() {
                                 uint8_t(~deviceSettings.subnet[3] | (deviceSettings.ip[3] & deviceSettings.subnet[3]))
                                };
 
-    return;
-  }
-
-  if (deviceSettings.ethernetEnable) {
-    WiFi.onEvent(ETHEvent);
-    ETH.begin();
-    if (!deviceSettings.dhcpEnable) {
-      ETH.config(deviceSettings.ip, deviceSettings.gateway, deviceSettings.subnet);
-    }
     return;
   }
 
