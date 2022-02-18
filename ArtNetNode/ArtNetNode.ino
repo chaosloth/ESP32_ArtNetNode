@@ -21,6 +21,9 @@
 // esptool.py --chip esp32 --port COM<??????> write_flash -z 0x1000 -b 5 ArtNetNode.ino.esp32-poe.bin
 //
 
+#define IP_PROTO_DEBUG
+#define DMX_PROTO_DEBUG
+
 #include <Arduino.h>
 
 #include "serialLEDDriver.h"
@@ -37,7 +40,7 @@
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
 
-// Mod wire ETH MDC(RMII) from GPIO 23 to GPIO 0 
+// Mod wire ETH MDC(RMII) from GPIO 23 to GPIO 0
 // so we can use VSPI MOSI on GPIO 23
 #define ETH_PHY_MDC 0
 
@@ -49,9 +52,9 @@
 
 #include <rom/rtc.h>
 
-#define CONFIG_VERSION "308"
-#define FIRMWARE_VERSION "3.0.8"
-#define ART_FIRM_VERSION 0x0308   // Firmware given over Artnet (2 uint8_ts)
+#define CONFIG_VERSION "400"
+#define FIRMWARE_VERSION "4.0.0"
+#define ART_FIRM_VERSION 0x0400   // Firmware given over Artnet (2 uint8_ts)
 
 #define ARTNET_OEM 0x0123     // Artnet OEM Code
 #define ESTA_MAN 0x555F       // ESTA Manufacturer Code
@@ -70,15 +73,22 @@
 // GPIO14 -> HSPICLK -> serial LED output point B clock pin (for APA102)
 //
 
+#ifdef DMX_PROTO_DEBUG
+boolean ledState = false;
+#endif
+
+#define LED_BUILTIN 2
+
 //
 // Customizable pins:
 //
-//#define DMX_DIR_A       0     // DMX data UART Direction port A pin 
+//#define DMX_DIR_A       0     // DMX data UART Direction port A pin
 //#define DMX_DIR_B       39    // DMX data UART Direction port B pin
 
 //#define NO_RESET            // Un comment to disable the reset button
 #ifndef NO_RESET
-#define SETTINGS_RESET  34    // GPIO34 is a user button on Olimex ESP32-PoE
+//#define SETTINGS_RESET  34    // GPIO34 is a user button on Olimex ESP32-PoE
+#define SETTINGS_RESET  0    // GPIO34 is a user button on Olimex ESP32-PoE
 #endif
 
 //
@@ -229,19 +239,19 @@ struct StoreStruct {
 
   true,                        // dhcpEnable
   false,                       // standAloneEnable
-  true,                        // ethernetEnable
+  false,                        // ethernetEnable
 
-  "espArtNetNode",             // nodeName
-  "espArtNetNode",             // longName
+  "ConnoDMX",                   // nodeName
+  "ConnoDMX",                   // longName
   "",                          // wifiSSID
   "",                          // wifiPass
-  "espArtNetNode",             // hotspotSSID
-  "1234567890123",             // hotspotPass
+  "ConnoDMX",                  // hotspotSSID
+  "infinite",                  // hotspotPass
   15,                          // hotspotDelay
 
-  TYPE_SERIAL_LED,             // portAmode
+  TYPE_RDM_OUT,                // portAmode
   TYPE_SERIAL_LED,             // portBmode
-  PROT_ARTNET,                 // portAprot
+  PROT_ARTNET_SACN,            // portAprot
   PROT_ARTNET,                 // portBprot
   MERGE_HTP,                   // portAmerge
   MERGE_HTP,                   // portBmerge
@@ -273,6 +283,7 @@ struct StoreStruct {
 };
 
 static void eepromSave() {
+  Serial.println("Saving EEPROM data");
   for (uint16_t t = 0; t < sizeof(deviceSettings); t++) {
     EEPROM.write(t, *((char*)&deviceSettings + t));
   }
@@ -280,6 +291,7 @@ static void eepromSave() {
 }
 
 static void eepromLoad() {
+  Serial.println("Loading EEPROM data");
   // To make sure there are settings, and they are YOURS!
   // If nothing is found it will use the default settings.
   if (EEPROM.read(0) == CONFIG_VERSION[0] &&
@@ -297,12 +309,19 @@ static void eepromLoad() {
 
     // If config files dont match, save defaults
   } else {
+    Serial.println("WARN: EEPROM and config versions do not match, saving current state");
     eepromSave();
     delay(500);
   }
 }
 
 void setup(void) {
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // Start debug output to serial
+  Serial.begin(115200);
+  delay(10);
+
   // Make direction input to avoid boot garbage being sent out
 #ifdef DMX_DIR_A
   pinMode(DMX_DIR_A, OUTPUT);
@@ -323,18 +342,33 @@ void setup(void) {
     delay(50);
     if (!digitalRead(SETTINGS_RESET)) {
       resetDefaults = true;
+      Serial.println("WARN: Reset button held, resetting to default");
+
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(250);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(250);
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(250);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(250);
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(250);
+      digitalWrite(LED_BUILTIN, LOW);
     }
   }
 #endif  // #ifdef SETTINGS_RESET
 
   // Start EEPROM
   EEPROM.begin(512);
+  delay(10);
 
   // Start SPIFFS file system
   SPIFFS.begin();
 
   // Check if SPIFFS formatted
   if (!SPIFFS.exists("/formatted.txt")) {
+    Serial.println("WARN: SPIFFS not formatted, doing it now");
     SPIFFS.format();
 
     File f = SPIFFS.open("/formatted.txt", "w");
@@ -342,6 +376,7 @@ void setup(void) {
     f.close();
   }
 
+  Serial.printf("Flag resetDefaults is %d\n", resetDefaults);
   // Load our saved values or store defaults
   if (!resetDefaults) {
     eepromLoad();
@@ -356,6 +391,7 @@ void setup(void) {
   // Start web server
   webStart();
 
+  Serial.printf("Flag deviceSettings.doFirmwareUpdate is %d\n", deviceSettings.doFirmwareUpdate);
   // Don't start our Artnet or DMX in firmware update mode or after multiple WDT resets
   if (!deviceSettings.doFirmwareUpdate) {
 
@@ -378,11 +414,10 @@ void setup(void) {
   } else {
     deviceSettings.doFirmwareUpdate = false;
   }
-  
-  Serial.begin(115200);
 
   delay(10);
 }
+
 
 void loop(void) {
   webServer.handleClient();
@@ -440,11 +475,21 @@ void loop(void) {
     while (millis() < n)
       webServer.handleClient();
 
+    Serial.println("Performing Device Restart from main loop");
     ESP.restart();
   }
 }
 
 static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncEnabled) {
+
+#ifdef DMX_PROTO_DEBUG
+  ledState = !ledState;
+  digitalWrite(LED_BUILTIN, ledState);
+  Serial.print("dmxHandle ");
+  uint8_t* dmxData = artRDM.getDMX(group, port);
+  Serial.printf("DMX Group %u Port %u : %03d %03d %03d %03d %03d %03d\n", group, port, dmxData[0], dmxData[1], dmxData[2], dmxData[3], dmxData[4], dmxData[5], dmxData[6]);
+#endif
+
   if (portA[0] == group) {
     if (deviceSettings.portAmode == TYPE_SERIAL_LED) {
 
@@ -452,7 +497,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
         switch (deviceSettings.portApixConfig) {
           case WS2812_RGB:
             if (numChans > 510) {
-              numChans = 510;  
+              numChans = 510;
             }
             // Copy DMX data to the pixels buffer
             pixDriver.setBuffer(0, port * 510, artRDM.getDMX(group, port), numChans);
@@ -461,7 +506,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
           case WS2812_RGBW_SPLIT:
           case APA102_RGBB:
             if (numChans > 512) {
-              numChans = 512;  
+              numChans = 512;
             }
             // Copy DMX data to the pixels buffer
             pixDriver.setBuffer(0, port * 512, artRDM.getDMX(group, port), numChans);
@@ -507,7 +552,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
           case WS2812_RGB:
             if (numChans > 510) {
               numChans = 510;
-            }    
+            }
             // Copy DMX data to the pixels buffer
             pixDriver.setBuffer(1, port * 510, artRDM.getDMX(group, port), numChans);
             break;
@@ -517,7 +562,7 @@ static void dmxHandle(uint8_t group, uint8_t port, uint16_t numChans, bool syncE
           case APA102_RGBB:
             if (numChans > 512) {
               numChans = 512;
-            }    
+            }
             // Copy DMX data to the pixels buffer
             pixDriver.setBuffer(1, port * 512, artRDM.getDMX(group, port), numChans);
             break;
@@ -680,6 +725,8 @@ static void dmxIn(uint16_t num) {
 }
 
 static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
+  Serial.printf("Handling AJAX Save, page ID %u\n", page);
+
   // This is a load request, not a save
   if (json.size() == 2) {
     return true;
@@ -687,11 +734,13 @@ static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
 
   switch (page) {
     case 1:     // Device Status
+      Serial.println("ERROR: Saving device status - nothing to do here");
       // We don't need to save anything for this.  Go straight to load
       return true;
       break;
 
     case 2:     // Wifi
+      Serial.println("Saving WIFI AP and Hotspot details");
       strncpy(deviceSettings.wifiSSID, json["wifiSSID"], 40);
       strncpy(deviceSettings.wifiPass, json["wifiPass"], 40);
       strncpy(deviceSettings.hotspotSSID, json["hotspotSSID"], 20);
@@ -705,6 +754,7 @@ static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
       break;
 
     case 3:     // IP Address & Node Name
+      Serial.println("Saving IP details");
       deviceSettings.ip = IPAddress(json["ipAddress"][0], json["ipAddress"][1], json["ipAddress"][2], json["ipAddress"][3]);
       deviceSettings.subnet = IPAddress(json["subAddress"][0], json["subAddress"][1], json["subAddress"][2], json["subAddress"][3]);
       deviceSettings.gateway = IPAddress(json["gwAddress"][0], json["gwAddress"][1], json["gwAddress"][2], json["gwAddress"][3]);
@@ -738,6 +788,7 @@ static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
       break;
 
     case 4:     // Port A
+      Serial.println("Saving Port A details");
       {
         deviceSettings.portAprot = (uint8_t)json["portAprot"];
         bool e131 = (deviceSettings.portAprot == PROT_ARTNET_SACN) ? true : false;
@@ -878,6 +929,7 @@ static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
       break;
 
     case 5:     // Port B
+      Serial.println("Saving Port B details");
       {
         deviceSettings.portBprot = (uint8_t)json["portBprot"];
         bool e131 = (deviceSettings.portBprot == PROT_ARTNET_SACN) ? true : false;
@@ -1007,24 +1059,29 @@ static bool ajaxSave(uint8_t page, DynamicJsonDocument& json) {
       break;
 
     case 6:     // Scenes
+      Serial.println("ERROR: Not implemented - Scenes");
       // Not yet implemented
 
       return true;
       break;
 
     case 7:     // Firmware
+      Serial.println("ERROR: Should never arrive here - Firmware");
       // Doesn't come here
 
       break;
 
     default:
       // Catch errors
+      Serial.println("ERROR:Some unknown save request");
       return false;
   }
   return false;
 }
 
+
 static void ajaxLoad(uint8_t page, JsonDocument& jsonReply) {
+  Serial.println("Handling AJAX Load");
 
   // Create the needed arrays here - doesn't work within the switch below
   JsonArray ipAddress = jsonReply.createNestedArray("ipAddress");
@@ -1303,6 +1360,7 @@ static void ajaxLoad(uint8_t page, JsonDocument& jsonReply) {
 }
 
 static void ajaxHandle() {
+  Serial.println("Handling AJAX request");
   deserializeJson(jsonDocument, webServer.arg("plain"));
   DynamicJsonDocument jsonReply(16384);
 
@@ -1332,7 +1390,7 @@ static void ajaxHandle() {
     // Handle load and save of data
   } else if (jsonDocument.containsKey("success") && jsonDocument["success"] == 1 && jsonDocument.containsKey("page")) {
     if (ajaxSave((uint8_t)jsonDocument["page"], jsonDocument)) {
-        ajaxLoad((uint8_t)jsonDocument["page"], jsonReply);
+      ajaxLoad((uint8_t)jsonDocument["page"], jsonReply);
 
       if (jsonDocument.size() > 2) {
         jsonReply["message"] = "Settings Saved";
@@ -1475,6 +1533,7 @@ static void doNodeReport() {
 }
 
 static void portSetup() {
+  Serial.println("Starting Port Setup");
 
   if (deviceSettings.portAmode == TYPE_DMX_OUT || deviceSettings.portAmode == TYPE_RDM_OUT) {
 
@@ -1519,6 +1578,7 @@ static void portSetup() {
 }
 
 static void artStart() {
+  Serial.println("Starting ArtNet");
   // Initialise out ArtNet
   if (isHotspot) {
     artRDM.init(deviceSettings.hotspotIp, deviceSettings.hotspotSubnet, true, deviceSettings.nodeName, deviceSettings.longName, ARTNET_OEM, ESTA_MAN, MAC_array);
@@ -1652,6 +1712,7 @@ static void artStart() {
     case SW_RESET:
     case SW_CPU_RESET:
     case EXT_CPU_RESET:
+      Serial.println("OK: Device 1 started");
       artRDM.setNodeReport("OK: Device 1 started", ARTNET_RC_POWER_OK);
       nextNodeReport = millis() + 4000;
       break;
@@ -1665,6 +1726,7 @@ static void artStart() {
     case RTCWDT_CPU_RESET:
     case RTCWDT_BROWN_OUT_RESET:
     case RTCWDT_RTC_RESET:
+      Serial.println("ERROR: (WDT) Unexpected device restart");
       artRDM.setNodeReport("ERROR: (WDT) Unexpected device restart", ARTNET_RC_POWER_FAIL);
       strcpy(nodeError, "Restart error: WDT");
       nextNodeReport = millis() + 10000;
@@ -1672,6 +1734,7 @@ static void artStart() {
       break;
 
     case SDIO_RESET:
+      Serial.println("ERROR: (SDIO) Unexpected device restart");
       artRDM.setNodeReport("ERROR: (SDIO) Unexpected device restart", ARTNET_RC_POWER_FAIL);
       strcpy(nodeError, "Restart error: EXCP");
       nextNodeReport = millis() + 10000;
@@ -1679,6 +1742,7 @@ static void artStart() {
       break;
 
     case DEEPSLEEP_RESET:
+      Serial.println("INFO: Deep Sleep Reset");
       break;
   }
 
@@ -1789,8 +1853,10 @@ static void startHotspot() {
     yield();
   }
 
-  ESP.restart();
+  Serial.println("Performing Device Restart from hotspot mode");
+  delay(250);
   isHotspot = false;
+  ESP.restart();
 }
 
 static void ETHEvent(WiFiEvent_t event)
@@ -1806,7 +1872,7 @@ static void ETHEvent(WiFiEvent_t event)
     case SYSTEM_EVENT_ETH_GOT_IP:
       deviceSettings.ip = ETH.localIP();
       deviceSettings.subnet = ETH.subnetMask();
-      if (deviceSettings.gateway == INADDR_NONE) {
+      if (deviceSettings.gateway == IPAddress(INADDR_NONE)) {
         deviceSettings.gateway = ETH.gatewayIP();
       }
       deviceSettings.broadcast = {uint8_t(~deviceSettings.subnet[0] | (deviceSettings.ip[0] & deviceSettings.subnet[0])),
@@ -1830,8 +1896,8 @@ static void ETHEvent(WiFiEvent_t event)
 
 static void wifiStart() {
   // If it's the default WiFi SSID, make it unique
-  if (strcmp(deviceSettings.hotspotSSID, "espArtNetNode") == 0 || deviceSettings.hotspotSSID[0] == '\0') {
-    sprintf(deviceSettings.hotspotSSID, "espArtNetNode_%05u", uint32_t((ESP.getEfuseMac() >> 32) & 0xFFFF));
+  if (strcmp(deviceSettings.hotspotSSID, "ConnoDMX") == 0 || deviceSettings.hotspotSSID[0] == '\0') {
+    sprintf(deviceSettings.hotspotSSID, "ConnoDMX_%05u", uint32_t((ESP.getEfuseMac() >> 32) & 0xFFFF));
   }
 
   if (deviceSettings.ethernetEnable) {
@@ -1858,6 +1924,8 @@ static void wifiStart() {
   }
 
   if (deviceSettings.wifiSSID[0] != '\0') {
+    Serial.println("System in WIFI_STA mode");
+
     WiFi.begin(deviceSettings.wifiSSID, deviceSettings.wifiPass);
     WiFi.mode(WIFI_STA);
 
@@ -1871,13 +1939,14 @@ static void wifiStart() {
       }
 
       if (millis() >= endTime) {
+        Serial.println("Starting hotspot after delay");
         startHotspot();
       }
 
       deviceSettings.ip = WiFi.localIP();
       deviceSettings.subnet = WiFi.subnetMask();
 
-      if (deviceSettings.gateway == INADDR_NONE) {
+      if (deviceSettings.gateway == IPAddress(INADDR_NONE)) {
         deviceSettings.gateway = WiFi.gatewayIP();
       }
 
@@ -1892,11 +1961,22 @@ static void wifiStart() {
 
     //sprintf(wifiStatus, "Wifi connected.  Signal: %ld<br />SSID: %s", WiFi.RSSI(), deviceSettings.wifiSSID);
     sprintf(wifiStatus, "Wifi connected.<br />SSID: %s", deviceSettings.wifiSSID);
+    Serial.print("Wifi connected, SSID: ");
+    Serial.println(deviceSettings.wifiSSID);
+
     WiFi.macAddress(MAC_array);
 
   } else {
+    Serial.println("System in Hotspot mode");
     startHotspot();
   }
 
   yield();
+}
+
+String ipToString(IPAddress ip) {
+  String s = "";
+  for (int i = 0; i < 4; i++)
+    s += i  ? "." + String(ip[i]) : String(ip[i]);
+  return s;
 }

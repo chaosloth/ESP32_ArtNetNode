@@ -68,7 +68,7 @@ void espArtNetRDM::init(IPAddress ip, IPAddress subnet, bool dhcp, const char* s
   _art->oemHi = (uint8_t)(oem >> 8);
   _art->estaLo = (uint8_t)esta;
   _art->estaHi = (uint8_t)(esta >> 8);
-  _art->syncIP = INADDR_NONE;
+  _art->syncIP = IPAddress(INADDR_NONE);
   _art->lastSync = 0;
   _art->nextPollReply = 0;
   memcpy(_art->shortName, shortname, ARTNET_SHORT_NAME_LENGTH);
@@ -108,7 +108,7 @@ uint8_t espArtNetRDM::addGroup(uint8_t net, uint8_t subnet) {
   _art->group[g]->netSwitch = net & 0b01111111;
   _art->group[g]->subnet = subnet;
   _art->group[g]->numPorts = 0;
-  _art->group[g]->cancelMergeIP = INADDR_NONE;
+  _art->group[g]->cancelMergeIP = IPAddress(INADDR_NONE);
   _art->group[g]->cancelMerge = 0;
   _art->group[g]->cancelMergeTime = 0;
 
@@ -158,11 +158,11 @@ uint8_t espArtNetRDM::addPort(uint8_t g, uint8_t p, uint8_t universe, uint8_t t,
   port->portType = t;
   port->mergeHTP = htp;
   port->portUni = universe;
-  port->senderIP[0] = INADDR_NONE;
-  port->senderIP[1] = INADDR_NONE;
+  port->senderIP[0] = IPAddress(INADDR_NONE);
+  port->senderIP[1] = IPAddress(INADDR_NONE);
 
   for (uint8_t x = 0; x < 5; x++)
-    port->rdmSenderIP[x] = INADDR_NONE;
+    port->rdmSenderIP[x] = IPAddress(INADDR_NONE);
 
   port->ipBuffer = 0;
   port->ipChans[0] = 0;
@@ -543,6 +543,11 @@ void espArtNetRDM::_artDMX(unsigned char *_artBuffer) {
 
   IPAddress rIP = eUDP.remoteIP();
 
+#ifdef IP_PROTO_DEBUG
+  Serial.print("espArtNetRDM::_artDMX, IP:");
+  Serial.println(rIP);
+#endif
+
   uint8_t net = (_artBuffer[15] & 0x7F);
   uint8_t sub = (_artBuffer[14] >> 4);
   uint8_t uni = (_artBuffer[14] & 0x0F);
@@ -570,6 +575,14 @@ void espArtNetRDM::_artDMX(unsigned char *_artBuffer) {
 }
 
 void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, uint8_t groupNum, uint8_t portNum, IPAddress rIP, uint16_t startChannel) {
+
+#ifdef IP_PROTO_DEBUG
+  Serial.print("espArtNetRDM::_saveDMX, IP:");
+  Serial.println(rIP);
+  Serial.printf("Number of Channels %u, Group %u, Port &u, Start Chan &u", numberOfChannels, groupNum, portNum, startChannel);
+#endif
+
+
   group_def* group = _art->group[groupNum];
   port_def* port = group->ports[portNum];
 
@@ -583,20 +596,20 @@ void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, u
 
     // Clear IPs that we haven't heard from in over 10 seconds
     if (port->lastPacketTime[0] < timeExp)
-      port->senderIP[0] = INADDR_NONE;
+      port->senderIP[0] = IPAddress(INADDR_NONE);
     else if (port->lastPacketTime[1] < timeExp)
-      port->senderIP[1] = INADDR_NONE;
+      port->senderIP[1] = IPAddress(INADDR_NONE);
   }
 
   // Get a sender ID
   if (port->senderIP[0] == rIP) {
     senderID = 0;
     port->lastPacketTime[0] = timeNow;
-  } else if (port->senderIP[1] == rIP || port->senderIP[1] == INADDR_NONE) {
+  } else if (port->senderIP[1] == rIP || port->senderIP[1] == IPAddress(INADDR_NONE)) {
     senderID = 1;
     port->senderIP[1] = rIP;
     port->lastPacketTime[1] = timeNow;
-  } else if (port->senderIP[0] == INADDR_NONE) {
+  } else if (port->senderIP[0] == IPAddress(INADDR_NONE)) {
     senderID = 0;
     port->senderIP[0] = rIP;
     port->lastPacketTime[0] = timeNow;
@@ -607,7 +620,7 @@ void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, u
     return;
 
   // Check if we're merging (the other IP will be non zero)
-  if (port->senderIP[(senderID ^ 0x01)] == INADDR_NONE)
+  if (port->senderIP[(senderID ^ 0x01)] == IPAddress(INADDR_NONE))
     port->merging = false;
   else
     port->merging = true;
@@ -616,7 +629,7 @@ void espArtNetRDM::_saveDMX(unsigned char *dmxData, uint16_t numberOfChannels, u
   // Cancel merge is old so cancel the cancel merge
   if ((group->cancelMergeTime + ARTNET_CANCEL_MERGE_TIMEOUT) < millis()) {
     group->cancelMerge = false;
-    group->cancelMergeIP = INADDR_NONE;
+    group->cancelMergeIP = IPAddress(INADDR_NONE);
 
   } else {
     // This is the correct IP, enable cancel merge
@@ -869,7 +882,7 @@ void espArtNetRDM::_artAddress(unsigned char *_artBuffer) {
 
         // Cancel the cancel merge
         _art->group[g]->cancelMerge = 0;
-        _art->group[g]->cancelMergeIP = INADDR_NONE;
+        _art->group[g]->cancelMergeIP = IPAddress(INADDR_NONE);
       }
       break;
 
@@ -883,7 +896,7 @@ void espArtNetRDM::_artAddress(unsigned char *_artBuffer) {
 
         // Cancel the cancel merge
         _art->group[g]->cancelMerge = 0;
-        _art->group[g]->cancelMergeIP = INADDR_NONE;
+        _art->group[g]->cancelMergeIP = IPAddress(INADDR_NONE);
       }
       break;
 
@@ -1081,6 +1094,11 @@ void espArtNetRDM::_artRDM(unsigned char *_artBuffer, uint16_t packetSize) {
 
   IPAddress remoteIp = eUDP.remoteIP();
 
+#ifdef IP_PROTO_DEBUG
+  Serial.print("espArtNetRDM::_artRDM, IP:");
+  Serial.println(rIP);
+#endif
+
   uint8_t net = _artBuffer[21] * 0x7F;
   uint8_t sub = _artBuffer[23] >> 4;
   uint8_t uni = _artBuffer[23] & 0x0F;
@@ -1114,11 +1132,11 @@ void espArtNetRDM::_artRDM(unsigned char *_artBuffer, uint16_t packetSize) {
           for (int q = 0; q < 5; q++) {
             // Check when last packets where received.  Clear if over 200ms
             if (timeNow >= (group->ports[y]->rdmSenderTime[q] + 200))
-              group->ports[y]->rdmSenderIP[q] = INADDR_NONE;
+              group->ports[y]->rdmSenderIP[q] = IPAddress(INADDR_NONE);
 
             // Save our IP
             if (!ipSet) {
-              if (group->ports[y]->rdmSenderIP[q] == INADDR_NONE || group->ports[y]->rdmSenderIP[q] == remoteIp) {
+              if (group->ports[y]->rdmSenderIP[q] == IPAddress(INADDR_NONE) || group->ports[y]->rdmSenderIP[q] == remoteIp) {
                 group->ports[y]->rdmSenderIP[q] = remoteIp;
                 group->ports[y]->rdmSenderTime[q] = timeNow;
                 ipSet = true;
@@ -1164,7 +1182,7 @@ void espArtNetRDM::rdmResponse(rdm_data* c, uint8_t g, uint8_t p) {
   memcpy(&rdmReply[24], &c->buffer[1], c->packet.Length + 1);
 
   for (int x = 0; x < 5; x++) {
-    if (_art->group[g]->ports[p]->rdmSenderIP[x] != INADDR_NONE) {
+    if (_art->group[g]->ports[p]->rdmSenderIP[x] != IPAddress(INADDR_NONE)) {
       // Send packet
       eUDP.beginPacket(_art->group[g]->ports[p]->rdmSenderIP[x], ARTNET_PORT);
       eUDP.write((const uint8_t *)rdmReply, len);
@@ -1179,13 +1197,13 @@ void espArtNetRDM::_artRDMSub(unsigned char *_artBuffer) {
 
 IPAddress espArtNetRDM::getIP() {
   if (_art == 0)
-    return INADDR_NONE;
+    return IPAddress(INADDR_NONE);
   return _art->deviceIP;
 }
 
 IPAddress espArtNetRDM::getSubnetMask() {
   if (_art == 0)
-    return INADDR_NONE;
+    return IPAddress(INADDR_NONE);
   return _art->subnet;
 }
 
@@ -1424,6 +1442,11 @@ void espArtNetRDM::_e131Receive(e131_packet_t* e131Buffer) {
 
   IPAddress rIP = fUDP.remoteIP();
 
+#ifdef IP_PROTO_DEBUG
+  Serial.print("espArtNetRDM::_e131Receive, IP:");
+  Serial.println(rIP);
+#endif
+
   // Loop through all groups
   for (int x = 0; x < _art->numGroups; x++) {
     group = _art->group[x];
@@ -1443,8 +1466,8 @@ void espArtNetRDM::_e131Receive(e131_packet_t* e131Buffer) {
         // A higher priority will override previous data - this is handled in saveDMX but we need to clear the IPs & buffer
         if (e131Buffer->priority > group->ports[y]->e131Priority) {
           artClearDMXBuffer(group->ports[y]->dmxBuffer);
-          group->ports[y]->senderIP[0] = INADDR_NONE;
-          group->ports[y]->senderIP[1] = INADDR_NONE;
+          group->ports[y]->senderIP[0] = IPAddress(INADDR_NONE);
+          group->ports[y]->senderIP[1] = IPAddress(INADDR_NONE);
         }
 
         group->ports[y]->e131Priority = e131Buffer->priority;
